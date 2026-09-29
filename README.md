@@ -7,7 +7,7 @@ NoteRepo opens on today, which fills the whole window. Scroll up to see earlier 
 
 There are no accounts, AI tools, or calendar integrations. Your notes live in a SQLite file on your Mac.
 
-[![Watch the 30-second NoteRepo demo](docs/showreel-poster.jpg)](docs/showreel.mp4)
+[![Watch the 30-second NoteRepo demo](docs/showreel-poster.jpg)](https://github.com/flaviocopes/noterepo/raw/main/docs/showreel.mp4)
 
 ## Download
 
