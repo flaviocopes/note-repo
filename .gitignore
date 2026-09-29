@@ -5,3 +5,7 @@ release/
 .cursor/hooks/state/
 .DS_Store
 npm-debug.log*
+*.sqlite3
+*.sqlite3-*
+notes.json
+backups/
