@@ -13,7 +13,7 @@ Read the announcement on my blog: [I built NoteRepo, a quiet daily notes app for
 
 ## Download
 
-Get `NoteRepo-1.0.0-arm64.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. The build runs on Apple silicon Macs. On an Intel Mac, [build it from source](#run-it-from-source).
+Get `NoteRepo-1.1.0-arm64.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. The build runs on Apple silicon Macs. On an Intel Mac, [build it from source](#run-it-from-source).
 
 ### Opening it the first time
 
