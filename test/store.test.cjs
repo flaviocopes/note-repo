@@ -329,6 +329,64 @@ test('fetches the title of a pasted web page', async (context) => {
   assert.equal((await linkTitle('not a link')).status, 400)
 })
 
+test('merges an editor save with a change made outside the app', async (context) => {
+  const { open } = await setupStore(context)
+  const store = await open()
+  await store.save('2026-09-20', '- A\n- B')
+  const app = createAppServer({ distDir: os.tmpdir(), store })
+  const appUrl = await app.listen()
+  context.after(() => app.close())
+
+  store.put('2026-09-20', '- A\n- B\n- Added by an agent')
+  const response = await fetch(`${appUrl}/api/day/2026-09-20`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: '- A edited\n- B', base: '- A\n- B' }),
+  })
+  const saved = await response.json()
+
+  assert.equal(saved.content, '- A edited\n- B\n- Added by an agent')
+  assert.match(saved.html, /Added by an agent/)
+  assert.equal(store.get('2026-09-20').content, saved.content)
+
+  const note = await (await fetch(`${appUrl}/api/day/2026-09-20?format=json`)).json()
+  assert.equal(note.content, saved.content)
+  assert.equal(note.hasContent, true)
+  assert.match(note.html, /<ul><li>A edited<\/li>/)
+})
+
+test('notices notes written by another connection', async (context) => {
+  const { open } = await setupStore(context)
+  const app = await open()
+  const agent = await open()
+  const version = app.dataVersion()
+
+  await agent.save('2026-09-21', '- From the CLI')
+  assert.notEqual(app.dataVersion(), version)
+  assert.equal(typeof app.versions().get('2026-09-21'), 'string')
+  assert.deepEqual(
+    app.days({ limit: 5 }).map((note) => note.date),
+    ['2026-09-21'],
+  )
+})
+
+test('backs up, empties and restores every note and image', async (context) => {
+  const { directory, open } = await setupStore(context)
+  const store = await open()
+  await store.save('2026-09-22', '- Keep me')
+  store.saveImage({ data: PIXEL_PNG, mimeType: 'image/png', fileName: 'pixel.png' })
+  const backup = path.join(directory, 'backups', 'one', 'notes.sqlite3')
+
+  await store.backup(backup)
+  store.clearAll()
+  assert.deepEqual(store.stats(), { days: 0, firstDay: null, lastDay: null, images: 0 })
+
+  await store.restore(backup)
+  assert.deepEqual(store.stats(), { days: 1, firstDay: '2026-09-22', lastDay: '2026-09-22', images: 1 })
+  assert.equal(store.get('2026-09-22').content, '- Keep me')
+  assert.equal((await fs.stat(backup)).mode & 0o777, 0o600)
+})
+
 test('checks image bytes before storing an upload', () => {
   assert.equal(hasImageSignature(PIXEL_PNG, 'image/png'), true)
   assert.equal(hasImageSignature(Buffer.from('not an image'), 'image/png'), false)

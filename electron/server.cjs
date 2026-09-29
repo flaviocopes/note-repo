@@ -5,8 +5,11 @@ const {
   IMAGE_ID_PATTERN,
   IMAGE_MIME_TYPES,
   MAX_IMAGE_BYTES,
+  hasNoteContent,
   isDateKey,
 } = require('./store.cjs')
+const { extractPageTitle, fetchLinkTitle, tweetDetails } = require('./links.cjs')
+const { parseListLine } = require('./outline.cjs')
 
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -82,14 +85,6 @@ const renderInline = (line) => {
   return html + escapeHtml(line.slice(cursor))
 }
 
-const tweetDetails = (value) => {
-  const match = String(value)
-    .trim()
-    .match(/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([a-z0-9_]+)\/status\/(\d+)(?:[/?#].*)?$/i)
-  if (!match) return null
-  return { url: String(value).trim(), user: match[1], id: match[2] }
-}
-
 const renderTweetPreview = ({ url, user, id }) => {
   const safeUrl = escapeHtml(url)
   const safeUser = escapeHtml(user)
@@ -101,20 +96,6 @@ const renderTweetPreview = ({ url, user, id }) => {
     <div class="tweet-preview-embed" aria-hidden="true"></div>
     <a class="tweet-preview-link" href="${safeUrl}" data-url="${safeUrl}" aria-label="Open post by @${safeUser} on X"></a>
   </div>`
-}
-
-const parseListLine = (line, previousDepth) => {
-  const indent = line.match(/^[ \t]*/)[0]
-  const spaces = indent.replace(/\t/g, '').length
-  const tabs = indent.length - spaces
-  const depth = Math.min(tabs + Math.floor(spaces / 2), previousDepth + 1)
-  const rest = line.slice(indent.length)
-
-  const ordered = rest.match(/^(\d+)\.(?:\s+(.*))?$/)
-  if (ordered) return { depth, ordered: true, start: Number(ordered[1]), body: ordered[2] || '' }
-
-  const bullet = rest.match(/^-\s?(.*)$/)
-  return { depth, ordered: false, start: 1, body: bullet ? bullet[1] : rest }
 }
 
 const renderListItem = (body, children) => {
@@ -177,6 +158,7 @@ const daySection = (dateKey, note) => {
     <article
       class="day-note${dateKey === todayKey() ? ' is-today' : ''}"
       data-note-date="${dateKey}"
+      data-base="${escapeHtml(note.content)}"
       x-data="noteEditor('${dateKey}')"
       x-init="mount()"
     >
@@ -318,117 +300,6 @@ const hasImageSignature = (data, mimeType) => {
   return false
 }
 
-const MAX_PAGE_BYTES = 1_000_000
-const PAGE_TIMEOUT_MS = 8_000
-const PAGE_USER_AGENT =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
-
-const HTML_ENTITIES = {
-  amp: '&',
-  apos: "'",
-  bull: '•',
-  gt: '>',
-  hellip: '…',
-  laquo: '«',
-  ldquo: '“',
-  lsquo: '‘',
-  lt: '<',
-  mdash: '—',
-  middot: '·',
-  nbsp: ' ',
-  ndash: '–',
-  quot: '"',
-  raquo: '»',
-  rdquo: '”',
-  rsquo: '’',
-}
-
-const decodeHtmlEntities = (value) =>
-  value.replace(/&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi, (entity, decimal, hex, name) => {
-    if (name) return HTML_ENTITIES[name.toLowerCase()] ?? entity
-    const code = Number.parseInt(decimal || hex, decimal ? 10 : 16)
-    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity
-  })
-
-const cleanPageText = (value) => decodeHtmlEntities(value).replace(/\s+/g, ' ').trim()
-
-const metaTags = (html) => {
-  const tags = {}
-  for (const [tag] of html.matchAll(/<meta\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi)) {
-    const attributes = {}
-    for (const match of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)) {
-      attributes[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4]
-    }
-    const key = (attributes.property || attributes.name || '').toLowerCase()
-    if (key && attributes.content && !(key in tags)) tags[key] = attributes.content
-  }
-  return tags
-}
-
-const compactName = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-const withoutSiteName = (title, siteName, hostname) => {
-  const match = title.match(/^(.*\S)\s+([|\-–—·•])\s+(\S.*)$/)
-  if (!match) return title
-  const [, rest, separator, suffix] = match
-  const suffixName = compactName(suffix)
-  const isSiteName =
-    suffixName === compactName(siteName) ||
-    hostname.split('.').slice(0, -1).includes(suffixName) ||
-    (separator === '|' && suffix.split(' ').length <= 4)
-  return suffixName && isSiteName ? rest : title
-}
-
-const extractPageTitle = (html, pageUrl) => {
-  const meta = metaTags(html)
-  const title = cleanPageText(
-    meta['og:title'] ||
-      meta['twitter:title'] ||
-      html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ||
-      '',
-  )
-  if (!title) return null
-  const siteName = cleanPageText(meta['og:site_name'] || meta['application-name'] || '')
-  return withoutSiteName(title, siteName, new URL(pageUrl).hostname).slice(0, 300)
-}
-
-const readPageHead = async (response) => {
-  const chunks = []
-  let size = 0
-  let text = ''
-  for await (const chunk of response.body) {
-    const bytes = Buffer.from(chunk)
-    chunks.push(bytes)
-    size += bytes.length
-    text += bytes.toString('latin1')
-    if (size >= MAX_PAGE_BYTES || /<\/head\s*>/i.test(text.slice(-bytes.length - 8))) break
-  }
-
-  const charset =
-    (response.headers.get('content-type') || '').match(/charset=["']?([\w-]+)/i)?.[1] ||
-    text.match(/<meta[^>]+charset=["']?([\w-]+)/i)?.[1] ||
-    'utf-8'
-  let decoder
-  try {
-    decoder = new TextDecoder(charset)
-  } catch {
-    decoder = new TextDecoder()
-  }
-  return decoder.decode(Buffer.concat(chunks))
-}
-
-const fetchPageTitle = async (pageUrl) => {
-  const response = await fetch(pageUrl, {
-    headers: { Accept: 'text/html,application/xhtml+xml', 'User-Agent': PAGE_USER_AGENT },
-    signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
-  })
-  if (!response.ok || !/html/i.test(response.headers.get('content-type') || '')) {
-    await response.body?.cancel()
-    return null
-  }
-  return extractPageTitle(await readPageHead(response), response.url || pageUrl.href)
-}
-
 const imageFileName = (value) => {
   if (typeof value !== 'string') return 'Image'
   try {
@@ -516,9 +387,7 @@ const createAppServer = ({ distDir, store }) => {
       }
 
       if (request.method === 'GET' && url.pathname === '/api/link-title') {
-        const pageUrl = new URL(url.searchParams.get('url') || '')
-        if (!/^https?:$/.test(pageUrl.protocol)) throw new TypeError('Only web links have titles')
-        const title = await fetchPageTitle(pageUrl).catch(() => null)
+        const title = await fetchLinkTitle(url.searchParams.get('url') || '')
         send(response, 200, JSON.stringify({ title }), 'application/json; charset=utf-8')
         return
       }
@@ -574,6 +443,13 @@ const createAppServer = ({ distDir, store }) => {
         const date = noteMatch[1]
         if (!isDateKey(date)) throw new TypeError('Invalid date')
 
+        if (request.method === 'GET' && url.searchParams.get('format') === 'json') {
+          const { content } = store.get(date)
+          const note = { content, hasContent: hasNoteContent(content), html: renderNoteHtml(content) }
+          send(response, 200, JSON.stringify(note), 'application/json; charset=utf-8')
+          return
+        }
+
         if (request.method === 'GET') {
           send(response, 200, daySection(date, store.get(date)), 'text/html; charset=utf-8')
           return
@@ -581,8 +457,18 @@ const createAppServer = ({ distDir, store }) => {
 
         if (request.method === 'PUT') {
           const payload = JSON.parse(await readBody(request))
-          const saved = await store.save(date, payload.content)
-          send(response, 200, JSON.stringify({ updatedAt: saved.updatedAt }), 'application/json; charset=utf-8')
+          const saved = await store.save(date, payload.content, { base: payload.base })
+          const merged = saved.content !== payload.content
+          send(
+            response,
+            200,
+            JSON.stringify({
+              updatedAt: saved.updatedAt,
+              content: saved.content,
+              ...(merged && { html: renderNoteHtml(saved.content) }),
+            }),
+            'application/json; charset=utf-8',
+          )
           return
         }
       }

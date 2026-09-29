@@ -6,8 +6,42 @@ const { NoteStore } = require('./store.cjs')
 let mainWindow
 let appServer
 let noteStore
+let changeWatcher
+let pendingDay = ''
 
 app.setName('NoteRepo')
+
+const openDay = (date) => {
+  if (!mainWindow || mainWindow.webContents.isLoading()) {
+    pendingDay = date
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.webContents.send('open-day', date)
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  const match = url.match(/^noterepo:\/\/(?:day\/(\d{4}-\d{2}-\d{2})|today)\/?$/i)
+  if (match) openDay(match[1] || 'today')
+})
+
+const watchOutsideChanges = () => {
+  let dataVersion = noteStore.dataVersion()
+  let versions = noteStore.versions()
+  return setInterval(() => {
+    const current = noteStore.dataVersion()
+    if (current === dataVersion) return
+    dataVersion = current
+    const next = noteStore.versions()
+    const dates = [...new Set([...versions.keys(), ...next.keys()])].filter(
+      (date) => versions.get(date) !== next.get(date),
+    )
+    versions = next
+    if (dates.length) mainWindow?.webContents.send('notes-changed', dates.sort())
+  }, 500)
+}
 
 const windowBackground = () => (nativeTheme.shouldUseDarkColors ? '#14191b' : '#fafafa')
 
@@ -49,6 +83,10 @@ const createWindow = async (appUrl) => {
   })
 
   await mainWindow.loadURL(appUrl)
+  if (pendingDay) {
+    openDay(pendingDay)
+    pendingDay = ''
+  }
 }
 
 ipcMain.handle('open-external', async (_event, url) => {
@@ -66,6 +104,7 @@ app.whenReady().then(async () => {
   }).load()
   appServer = createAppServer({ distDir: path.join(__dirname, '..', 'dist'), store: noteStore })
   const appUrl = await appServer.listen()
+  changeWatcher = watchOutsideChanges()
   await createWindow(appUrl)
 
   app.on('activate', async () => {
@@ -82,5 +121,6 @@ app.on('before-quit', () => {
 })
 
 app.on('will-quit', () => {
+  clearInterval(changeWatcher)
   if (noteStore) noteStore.close()
 })

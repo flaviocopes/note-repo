@@ -24,5 +24,7 @@ interface Window {
   }
   desktop?: {
     openExternal: (url: string) => Promise<void>
+    onNotesChanged: (callback: (dates: string[]) => void) => void
+    onOpenDay: (callback: (date: string) => void) => void
   }
 }

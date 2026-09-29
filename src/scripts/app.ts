@@ -15,6 +15,17 @@ type TweetDetails = {
   id: string
 }
 
+type StoredNote = {
+  content: string
+  hasContent: boolean
+  html: string
+}
+
+type CaretPosition = {
+  item: number
+  offset: number
+}
+
 const IMAGE_TYPES = new Set([
   'image/gif',
   'image/jpeg',
@@ -29,6 +40,7 @@ const X_WIDGET_SCRIPT = 'https://platform.twitter.com/widgets.js'
 let draggedImageItem: HTMLLIElement | null = null
 let selectedImageItem: HTMLLIElement | null = null
 let tweetWidgetsPromise: Promise<NonNullable<Window['twttr']>> | null = null
+let outsideChanges = Promise.resolve()
 
 const lightScheme = window.matchMedia('(prefers-color-scheme: light)')
 const tweetTheme = () => (lightScheme.matches ? 'light' : 'dark')
@@ -652,6 +664,49 @@ const serializeList = (list: HTMLElement, depth: number, lines: string[]) => {
   })
 }
 
+const caretPosition = (editor: HTMLElement): CaretPosition | null => {
+  const selection = window.getSelection()
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return null
+  const items = [...editor.querySelectorAll('li')]
+  const item = closestListItem(editor, selection.anchorNode)
+  if (!item) return null
+  const range = document.createRange()
+  range.selectNodeContents(item)
+  range.setEnd(selection.anchorNode as Node, selection.anchorOffset)
+  return { item: items.indexOf(item), offset: range.toString().length }
+}
+
+const restoreCaret = (editor: HTMLElement, caret: CaretPosition) => {
+  const items = editor.querySelectorAll('li')
+  const item = items[Math.min(caret.item, items.length - 1)]
+  if (!item) return
+  const range = document.createRange()
+  range.setStart(item, 0)
+  const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT)
+  let remaining = caret.offset
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const length = node.textContent?.length || 0
+    range.setStart(node, Math.min(remaining, length))
+    if (remaining <= length) break
+    remaining -= length
+  }
+  range.collapse(true)
+  window.getSelection()?.removeAllRanges()
+  window.getSelection()?.addRange(range)
+}
+
+const keepScrollPosition = (change: () => void) => {
+  const feed = document.querySelector<HTMLElement>('#daily-feed')
+  const top = feed?.getBoundingClientRect().top || 0
+  const anchor = [...document.querySelectorAll<HTMLElement>('[data-note-date]')].find(
+    (section) => section.getBoundingClientRect().bottom > top,
+  )
+  const offset = anchor?.getBoundingClientRect().top || 0
+  change()
+  const shift = anchor?.isConnected ? anchor.getBoundingClientRect().top - offset : 0
+  if (feed && shift) feed.scrollTop += shift
+}
+
 const serializeEditor = (editor: HTMLElement) => {
   const lines: string[] = []
   for (const child of editor.childNodes) {
@@ -726,6 +781,68 @@ window.noteShell = () => ({
       this.saveState = event.detail.state
       this.saveLabel = event.detail.label
     }) as EventListener)
+
+    window.desktop?.onNotesChanged((dates) => {
+      outsideChanges = outsideChanges.then(() => this.refreshDays(dates)).catch(console.error)
+    })
+
+    window.desktop?.onOpenDay((date) => {
+      this.jumpToDate(date === 'today' ? todayKey() : date, true, false)
+    })
+  },
+
+  async refreshDays(dates: string[]) {
+    const days = dates.filter((date) => date <= todayKey())
+    if (days.length > 10) {
+      await this.refreshFeed()
+      return
+    }
+    for (const date of days) await this.refreshDay(date)
+    this.updateActiveFromScroll()
+  },
+
+  async refreshDay(date: string) {
+    const response = await fetch(`/api/day/${date}?format=json`)
+    if (!response.ok) return
+    const note = (await response.json()) as StoredNote
+    const section = document.querySelector<HTMLElement>(`[data-note-date="${date}"]`)
+
+    if (section) {
+      const editor = window.Alpine.$data(section)
+      if (note.content === editor.base) return
+      if (editor.content !== editor.lastSaved) {
+        await editor.save()
+        return
+      }
+      if (!note.hasContent && date !== todayKey()) keepScrollPosition(() => section.remove())
+      else keepScrollPosition(() => editor.applyContent(note.content, note.html))
+      return
+    }
+
+    if (!note.hasContent) return
+    const sections = [...document.querySelectorAll<HTMLElement>('[data-note-date]')]
+    const next = sections.find((candidate) => (candidate.dataset.noteDate || '') > date)
+    if (!next) return
+    if (next === sections[0] && document.querySelector('.feed-sentinel[data-direction="before"]')) return
+
+    const template = document.createElement('template')
+    template.innerHTML = (await fetch(`/api/day/${date}`).then((day) => day.text())).trim()
+    const added = template.content.firstElementChild as HTMLElement | null
+    if (!added) return
+    keepScrollPosition(() => next.before(added))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    if (!(added as HTMLElement & { _x_dataStack?: unknown })._x_dataStack) window.Alpine.initTree(added)
+  },
+
+  async refreshFeed() {
+    const editors = [...document.querySelectorAll<HTMLElement>('[data-note-date]')].map((section) =>
+      window.Alpine.$data(section),
+    )
+    await Promise.all(
+      editors.filter((editor) => editor.content !== editor.lastSaved).map((editor) => editor.save()),
+    )
+    this.pendingJump = this.activeDate
+    this.reloadFeed(this.activeDate)
   },
 
   today() {
@@ -816,12 +933,12 @@ window.noteShell = () => ({
     })
   },
 
-  jumpToDate(dateKey: string, focusEditor = false) {
+  jumpToDate(dateKey: string, focusEditor = false, smooth = true) {
     if (!dateKey) return
     const date = dateKey < todayKey() ? dateKey : todayKey()
     this.searchOpen = false
     if (focusEditor) this.pendingFocusDate = date
-    if (this.scrollToLoadedDate(date)) {
+    if (this.scrollToLoadedDate(date, smooth)) {
       if (focusEditor) this.focusLoadedDate(date)
       return
     }
@@ -874,6 +991,7 @@ window.noteEditor = (date: string) => ({
   date,
   content: '',
   lastSaved: '',
+  base: '',
   saveTimer: 0,
   imageDragActive: false,
   uploadingImages: 0,
@@ -884,6 +1002,20 @@ window.noteEditor = (date: string) => ({
     ensureItemAfterLastTweet(editor)
     this.content = serializeEditor(editor)
     this.lastSaved = this.content
+    this.base = (this.$root as HTMLElement).dataset.base ?? this.content
+    void loadTweetPreviews(editor)
+  },
+
+  applyContent(content: string, html: string) {
+    const editor = this.$refs.editor as HTMLElement
+    const caret = document.activeElement === editor ? caretPosition(editor) : null
+    editor.innerHTML = html
+    upgradeTweetItems(editor)
+    ensureItemAfterLastTweet(editor)
+    this.content = serializeEditor(editor)
+    this.lastSaved = this.content
+    this.base = content
+    if (caret) restoreCaret(editor, caret)
     void loadTweetPreviews(editor)
   },
 
@@ -906,14 +1038,19 @@ window.noteEditor = (date: string) => ({
   async save() {
     window.clearTimeout(this.saveTimer)
     if (this.content === this.lastSaved) return
+    const content = this.content
     try {
       const response = await fetch(`/api/day/${this.date}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: this.content }),
+        body: JSON.stringify({ content, base: this.base }),
       })
       if (!response.ok) throw new Error('Save failed')
-      this.lastSaved = this.content
+      const saved = (await response.json()) as { content: string; html?: string }
+      this.lastSaved = content
+      if (!saved.html) this.base = saved.content
+      else if (this.content === content) this.applyContent(saved.content, saved.html)
+      else this.base = content
       window.dispatchEvent(
         new CustomEvent('noterepo:save-state', {
           detail: { date: this.date, state: 'saved', label: 'Saved' },

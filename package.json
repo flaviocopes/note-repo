@@ -21,6 +21,9 @@
     "node": ">=22.13"
   },
   "main": "electron/main.cjs",
+  "bin": {
+    "noterepo": "bin/noterepo.cjs"
+  },
   "type": "module",
   "scripts": {
     "dev": "npm run build:ui && electron .",
@@ -37,9 +40,24 @@
     "appId": "com.flaviocopes.noterepo",
     "productName": "NoteRepo",
     "files": [
+      "bin/**/*",
       "dist/**/*",
       "electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/cli/noterepo",
+        "to": "bin/noterepo"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "NoteRepo",
+        "schemes": [
+          "noterepo"
+        ]
+      }
     ],
     "directories": {
       "output": "release"

@@ -2,6 +2,7 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const { createHash } = require('node:crypto')
 const { DatabaseSync } = require('node:sqlite')
+const { mergeContent } = require('./outline.cjs')
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const IMAGE_ID_PATTERN = /^[a-f0-9]{64}$/
@@ -13,6 +14,7 @@ const IMAGE_MIME_TYPES = new Set([
   'image/webp',
 ])
 const MAX_IMAGE_BYTES = 15_000_000
+const MAX_NOTE_BYTES = 2_000_000
 
 const hasNoteContent = (content) =>
   String(content)
@@ -42,6 +44,7 @@ class NoteStore {
     this.legacyPaths = uniquePaths(legacyPaths)
     this.database = null
     this.statements = null
+    this.inTransaction = false
   }
 
   async load() {
@@ -49,6 +52,7 @@ class NoteStore {
     this.database = new DatabaseSync(this.filePath)
     this.database.function('has_note_content', (content) => Number(hasNoteContent(content)))
     this.database.exec(`
+      PRAGMA busy_timeout = 5000;
       PRAGMA journal_mode = WAL;
       PRAGMA synchronous = NORMAL;
 
@@ -110,6 +114,22 @@ class NoteStore {
         WHERE date > ? AND has_note_content(content) = 1
         ORDER BY date ASC
         LIMIT ?
+      `),
+      days: this.database.prepare(`
+        SELECT date, content, updated_at AS updatedAt
+        FROM notes
+        WHERE date >= ? AND date <= ? AND has_note_content(content) = 1
+        ORDER BY date DESC
+        LIMIT ?
+      `),
+      versions: this.database.prepare('SELECT date, updated_at AS updatedAt FROM notes'),
+      dataVersion: this.database.prepare('PRAGMA data_version'),
+      stats: this.database.prepare(`
+        SELECT
+          (SELECT count(*) FROM notes WHERE has_note_content(content) = 1) AS days,
+          (SELECT min(date) FROM notes WHERE has_note_content(content) = 1) AS firstDay,
+          (SELECT max(date) FROM notes WHERE has_note_content(content) = 1) AS lastDay,
+          (SELECT count(*) FROM images) AS images
       `),
       migration: this.database.prepare(
         "SELECT value FROM metadata WHERE key = 'json_migration_v1'",
@@ -219,10 +239,27 @@ class NoteStore {
       : { content: '', updatedAt: null }
   }
 
-  async save(date, content) {
+  transaction(run) {
+    this.ensureLoaded()
+    if (this.inTransaction) return run()
+    this.database.exec('BEGIN IMMEDIATE')
+    this.inTransaction = true
+    try {
+      const result = run()
+      this.database.exec('COMMIT')
+      return result
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    } finally {
+      this.inTransaction = false
+    }
+  }
+
+  put(date, content) {
     if (!isDateKey(date)) throw new TypeError('Invalid date')
     if (typeof content !== 'string') throw new TypeError('Content must be text')
-    if (Buffer.byteLength(content, 'utf8') > 2_000_000) {
+    if (Buffer.byteLength(content, 'utf8') > MAX_NOTE_BYTES) {
       throw new RangeError('Note is too large')
     }
     this.ensureLoaded()
@@ -230,6 +267,15 @@ class NoteStore {
     const updatedAt = new Date().toISOString()
     this.statements.save.run(date, content, updatedAt)
     return { content, updatedAt }
+  }
+
+  async save(date, content, { base } = {}) {
+    if (typeof content !== 'string') throw new TypeError('Content must be text')
+    return this.transaction(() => {
+      if (typeof base !== 'string') return this.put(date, content)
+      const current = this.get(date).content
+      return this.put(date, current === base ? content : mergeContent(base, content, current))
+    })
   }
 
   has(date) {
@@ -261,6 +307,65 @@ class NoteStore {
     if (!Number.isInteger(limit) || limit < 1) throw new TypeError('Invalid limit')
     this.ensureLoaded()
     return this.statements.contentNotesAfter.all(date, limit)
+  }
+
+  days({ from = '0000-01-01', to = '9999-12-31', limit = -1 } = {}) {
+    if (!DATE_PATTERN.test(from) || !DATE_PATTERN.test(to)) throw new TypeError('Invalid date')
+    if (!Number.isInteger(limit)) throw new TypeError('Invalid limit')
+    this.ensureLoaded()
+    return this.statements.days.all(from, to, limit)
+  }
+
+  dataVersion() {
+    this.ensureLoaded()
+    return this.statements.dataVersion.get().data_version
+  }
+
+  versions() {
+    this.ensureLoaded()
+    return new Map(this.statements.versions.all().map((note) => [note.date, note.updatedAt]))
+  }
+
+  stats() {
+    this.ensureLoaded()
+    return { ...this.statements.stats.get() }
+  }
+
+  async backup(filePath) {
+    this.ensureLoaded()
+    await fs.mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 })
+    this.database.prepare('VACUUM INTO ?').run(filePath)
+    await fs.chmod(filePath, 0o600)
+  }
+
+  clearAll() {
+    this.transaction(() => this.database.exec('DELETE FROM notes; DELETE FROM images;'))
+  }
+
+  async restore(filePath) {
+    this.ensureLoaded()
+    const copyDirectory = await fs.mkdtemp(path.join(path.dirname(this.filePath), '.restore-'))
+    const copy = path.join(copyDirectory, 'notes.sqlite3')
+    await fs.copyFile(filePath, copy)
+    try {
+      this.database.prepare('ATTACH DATABASE ? AS source').run(copy)
+      try {
+        this.transaction(() =>
+          this.database.exec(`
+            DELETE FROM notes;
+            DELETE FROM images;
+            INSERT INTO notes (date, content, updated_at)
+              SELECT date, content, updated_at FROM source.notes;
+            INSERT INTO images (id, checksum, mime_type, file_name, width, height, byte_size, data, created_at)
+              SELECT id, checksum, mime_type, file_name, width, height, byte_size, data, created_at FROM source.images;
+          `),
+        )
+      } finally {
+        this.database.exec('DETACH DATABASE source')
+      }
+    } finally {
+      await fs.rm(copyDirectory, { recursive: true, force: true })
+    }
   }
 
   saveImage({ data, mimeType, fileName = 'Image', width = null, height = null }) {
