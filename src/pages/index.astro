@@ -1,0 +1,81 @@
+---
+import '../styles/global.css'
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafafa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14191b" />
+    <link rel="icon" type="image/png" href="/app-icon.png" />
+    <title>NoteRepo</title>
+  </head>
+  <body x-data="noteShell()" @keydown.window="handleShortcut($event)">
+    <div class="titlebar" aria-hidden="true"></div>
+
+    <main class="app-shell">
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <button
+            class="nav-button"
+            :class="{ 'is-active': activeDate === today() }"
+            type="button"
+            title="Today (⌘D)"
+            @click="focusToday()"
+          >
+            Today
+          </button>
+        </nav>
+
+        <div class="search-panel">
+          <input
+            id="note-search"
+            class="sidebar-field"
+            name="q"
+            type="search"
+            placeholder="Search"
+            title="Search (⌘K)"
+            aria-label="Search notes"
+            autocomplete="off"
+            hx-get="/api/search"
+            hx-trigger="input changed delay:220ms, search"
+            hx-target="#search-results"
+            hx-swap="innerHTML"
+            @focus="searchOpen = true"
+            @search="if (!$event.target.value) searchOpen = false"
+          />
+          <div id="search-results" class="search-results" x-show="searchOpen" x-cloak></div>
+        </div>
+
+        <input
+          id="date-jump"
+          class="sidebar-field"
+          type="date"
+          aria-label="Jump to a day"
+          :value="activeDate"
+          :max="today()"
+          @change="jumpToDate($event.target.value)"
+        />
+
+        <p class="save-error" x-show="saveState === 'error'" x-text="saveLabel" x-cloak></p>
+      </aside>
+
+      <section class="document-column">
+        <div
+          id="daily-feed"
+          class="daily-feed"
+          aria-label="Daily notes"
+          hx-get="/api/feed?anchor=today"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+        ></div>
+      </section>
+    </main>
+
+    <script>
+      import '../scripts/app.ts'
+    </script>
+  </body>
+</html>
