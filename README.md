@@ -15,7 +15,21 @@ Read the announcement on my blog: [I built NoteRepo, a quiet daily notes app for
 
 Get `NoteRepo-1.0.0-arm64.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. The build runs on Apple silicon Macs. On an Intel Mac, [build it from source](#run-it-from-source).
 
-The app is ad-hoc signed but not notarized, so macOS blocks it the first time you open it. Open **System Settings → Privacy & Security**, find NoteRepo, and choose **Open Anyway**. If macOS says the app is damaged, run `xattr -dr com.apple.quarantine /Applications/NoteRepo.app` and open it again.
+### Opening it the first time
+
+NoteRepo isn't signed with an Apple Developer ID or notarized by Apple, and I don't plan to change that. So the first time you open it, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then allow it in one of two ways.
+
+In System Settings, open **Privacy & Security** and scroll down to the message about NoteRepo. Click **Open Anyway**, confirm, and open the app again. The button shows up for about an hour after you try to open the app.
+
+In Terminal, remove the quarantine flag macOS adds to downloaded files, then open the app:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/NoteRepo.app
+```
+
+The same command fixes a message saying NoteRepo is damaged. You don't need to turn off Gatekeeper for either option.
+
+On a work laptop you might not be able to install apps in `/Applications`. You can keep NoteRepo in the `Applications` folder inside your home folder, and run the command on `~/Applications/NoteRepo.app`. If your company blocks apps that aren't notarized, ask your IT team.
 
 ## Features
 
@@ -75,7 +89,7 @@ npm run package:mac
 
 The app appears in `release/mac-arm64/NoteRepo.app` on Apple silicon Macs. Drag it to your Applications folder.
 
-The build is ad-hoc signed and not notarized. If macOS blocks a copy you downloaded or moved from another Mac, open **System Settings → Privacy & Security**, find NoteRepo, and choose **Open Anyway**. You don't need to disable Gatekeeper.
+The build is ad-hoc signed and not notarized. A copy you build yourself opens without a warning. If you send it to another Mac, it can get the same warning as the download, so follow [Opening it the first time](#opening-it-the-first-time).
 
 ## Where your notes live
 
