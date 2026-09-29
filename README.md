@@ -7,6 +7,8 @@ NoteRepo opens on today, which fills the whole window. Scroll up to see earlier 
 
 There are no accounts, AI tools, or calendar integrations. Your notes live in a SQLite file on your Mac.
 
+Read the announcement on my blog: [I built NoteRepo, a quiet daily notes app for macOS](https://flaviocopes.com/noterepo/).
+
 [![Watch the 30-second NoteRepo demo](docs/showreel-poster.jpg)](https://github.com/flaviocopes/noterepo/raw/main/docs/showreel.mp4)
 
 ## Download
@@ -31,7 +33,7 @@ The app is ad-hoc signed but not notarized, so macOS blocks it the first time yo
 - A date picker that jumps to the closest day with notes
 - Light and dark appearance following the macOS setting
 
-![NoteRepo showing today's note with a titled link, a nested list, and a numbered list](docs/screenshot.png)
+![NoteRepo showing today's note with titled links and an X post preview](docs/screenshot.png)
 
 ## Keyboard shortcuts
 
