@@ -37,9 +37,11 @@ ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<versi
 - Check editor changes with the self-test, on a temporary folder:
   `open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test`
   Launch it with `open`, so the app is active and ⌘Z reaches the Edit menu. Add a check to `SelfTest.swift` for any new editing behavior.
+- Quit NoteRepo before any `open ... --args` launch. If it's already running, `open` only brings it forward and drops the arguments, so `open -W` hangs.
+- Agents can't send keystrokes through System Events here. Drive the editor from `SelfTest.swift`, or with `--automation` commands like `swift scripts/send.swift command today`.
 - Before changing how days are read or saved, back up with `noterepo backup`, then run `--round-trip` on that copy. It must report 0 days that differ.
 - For screenshots, launch with `--automation` and run `swift scripts/send.swift snapshot /tmp/shot.png`. The app captures its own window, so it needs no screen recording permission.
 - For note data tasks like seeding demo days, backups, restores or reading a day, use the `noterepo` CLI. It works while the app runs, and the app shows the changes within a second. `reset --yes` and `restore <backup> --yes` always back up first.
 - Agents depend on the CLI's commands, options and JSON output, so keep them stable and add tests for any change.
 - Keep the UI minimalist and left-aligned. The light theme uses a neutral near-white, not a warm cream tint.
-- Releases are ad-hoc signed and not notarized. Sign the whole bundle and check it with `codesign --verify --deep --strict`.
+- Releases are ad-hoc signed and not notarized. Sign the whole bundle and check it with `codesign --verify --deep --strict`. Every release gets a section in `CHANGELOG.md`, newest first.
