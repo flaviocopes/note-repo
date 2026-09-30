@@ -40,9 +40,7 @@ const run = async () => {
       await wait(50)
     }
 
-    const input = document.querySelector('#date-jump')
-    input.value = ${JSON.stringify(date)}
-    input.dispatchEvent(new Event('change', { bubbles: true }))
+    window.Alpine.$data(document.body).jumpToDate(${JSON.stringify(date)})
 
     let section = null
     for (let attempt = 0; attempt < 80 && !section; attempt += 1) {

@@ -736,8 +736,6 @@ window.noteShell = () => ({
   prependSnapshot: null as null | { height: number; top: number },
 
   init() {
-    this.setActiveDate(todayKey())
-
     document.body.addEventListener('htmx:beforeSwap', (event: Event) => {
       const target = (event as CustomEvent).detail.target as HTMLElement
       if (target?.dataset?.direction !== 'before') return
@@ -876,13 +874,7 @@ window.noteShell = () => ({
 
   setActiveFromSection(section: HTMLElement) {
     const date = section.dataset.noteDate
-    if (date) this.setActiveDate(date)
-  },
-
-  setActiveDate(dateKey: string) {
-    this.activeDate = dateKey
-    const input = document.querySelector<HTMLInputElement>('#date-jump')
-    if (input) input.value = dateKey
+    if (date) this.activeDate = date
   },
 
   scrollToLoadedDate(dateKey: string, smooth = true) {

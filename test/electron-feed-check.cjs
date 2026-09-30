@@ -75,7 +75,7 @@ const run = async () => {
     layout.pastDaysHaveNotes = [...document.querySelectorAll('[data-note-date]:not(.is-today) [contenteditable]')]
       .every((editor) => editor.textContent.trim() || editor.querySelector('img[data-image-id], .tweet-preview'))
 
-    const dateInput = document.querySelector('#date-jump')
+    const shell = window.Alpine.$data(document.body)
     const testDays = ['1999-12-30', '1999-12-31']
     for (const date of testDays) {
       const section = await fetch('/api/day/' + date).then((response) => response.text())
@@ -86,22 +86,20 @@ const run = async () => {
       await save('1999-12-30', 'Saved test day')
       await save('1999-12-31', ' \\n\\t ')
 
-      dateInput.value = '1999-12-31'
-      dateInput.dispatchEvent(new Event('change', { bubbles: true }))
+      shell.jumpToDate('1999-12-31')
       const jumpedToClosestNote = await waitFor(() =>
-        document.querySelector('[data-note-date="1999-12-30"]') && dateInput.value === '1999-12-30'
+        document.querySelector('[data-note-date="1999-12-30"]') && shell.activeDate === '1999-12-30'
       )
       const emptyDayHidden = !document.querySelector('[data-note-date="1999-12-31"]')
 
-      dateInput.value = '2099-01-01'
-      dateInput.dispatchEvent(new Event('change', { bubbles: true }))
+      shell.jumpToDate('2099-01-01')
       const futureJumpShowsToday = await waitFor(() =>
-        dateInput.value === today && dates().at(-1) === today && dates().every((date) => date <= today)
+        shell.activeDate === today && dates().at(-1) === today && dates().every((date) => date <= today)
       )
 
       return {
         ...layout,
-        futureDatesDisabled: dateInput.max === today,
+        noDatePicker: !document.querySelector('.sidebar input[type="date"]'),
         jumpedToClosestNote: Boolean(jumpedToClosestNote),
         emptyDayHidden,
         futureJumpShowsToday,

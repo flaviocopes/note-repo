@@ -46,7 +46,6 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 - Rich previews for X and Twitter links pasted on their own line
 - Images added by dragging a file into a day or pasting from the clipboard
 - Image items you can select and delete, drag within a day, or move to another day
-- A date picker that jumps to the closest day with notes
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 

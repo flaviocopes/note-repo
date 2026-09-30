@@ -49,16 +49,6 @@ import '../styles/global.css'
           <div id="search-results" class="search-results" x-show="searchOpen" x-cloak></div>
         </div>
 
-        <input
-          id="date-jump"
-          class="sidebar-field"
-          type="date"
-          aria-label="Jump to a day"
-          :value="activeDate"
-          :max="today()"
-          @change="jumpToDate($event.target.value)"
-        />
-
         <p class="save-error" x-show="saveState === 'error'" x-text="saveLabel" x-cloak></p>
       </aside>
 

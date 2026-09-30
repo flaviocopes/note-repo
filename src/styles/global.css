@@ -135,10 +135,6 @@ button {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
-#date-jump {
-  color: var(--muted);
-}
-
 .search-panel {
   position: relative;
 }
