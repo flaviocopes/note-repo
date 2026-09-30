@@ -290,21 +290,6 @@ The development and packaged apps share this file, so back it up like any other 
 
 NoteRepo accepts PNG, JPEG, GIF, WebP, and safe SVG images up to 15 MB each. Identical images are stored only once.
 
-## Import from Reflect
-
-If you're coming from [Reflect](https://reflect.app), export your notes as JSON and import the daily notes.
-
-Quit NoteRepo first, then preview what would change:
-
-```sh
-node scripts/import-reflect.cjs \
-  --source ~/Downloads/reflect-export.json \
-  --database ~/Library/Application\ Support/NoteRepo/notes.sqlite3 \
-  --dry-run
-```
-
-Run the same command without `--dry-run` to import. The script backs up your database next to it first, downloads your Reflect images into NoteRepo, and appends Reflect notes to days that already have notes. Running it twice doesn't duplicate anything.
-
 ## Development
 
 Run the type check, the build, and the unit tests:

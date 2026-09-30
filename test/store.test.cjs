@@ -18,13 +18,6 @@ const {
   renderNoteHtml,
   todayKey,
 } = require('../electron/server.cjs')
-const {
-  detectImageMime,
-  documentToContent,
-  importNotes,
-  upgradeImageReferences,
-  validateReflectImageUrl,
-} = require('../scripts/import-reflect.cjs')
 
 const PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -397,105 +390,6 @@ test('checks image bytes before storing an upload', () => {
   assert.equal(
     hasImageSignature(Buffer.from('<svg><script>alert(1)</script></svg>'), 'image/svg+xml'),
     false,
-  )
-})
-
-test('converts Reflect daily documents into NoteRepo content', () => {
-  const id = 'b'.repeat(64)
-  const document = {
-    type: 'doc',
-    content: [
-      { type: 'heading', content: [{ type: 'text', text: 'Daily title' }] },
-      {
-        type: 'list',
-        attrs: { kind: 'bullet' },
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Buy milk' }] }],
-      },
-      {
-        type: 'list',
-        attrs: { kind: 'ordered' },
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: 'Reflect',
-                marks: [{ type: 'link', attrs: { href: 'https://reflect.app' } }],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: 'image',
-        attrs: { src: 'https://reflect-assets.app/image.png', fileName: 'image.png' },
-      },
-      { type: 'tweet', attrs: { url: 'https://x.com/flaviocopes/status/1' } },
-    ],
-  }
-  const images = new Map([
-    ['https://reflect-assets.app/image.png', { id, fileName: 'image.png' }],
-  ])
-
-  assert.equal(
-    documentToContent(document, images),
-    `- Buy milk\n1. [Reflect](https://reflect.app)\n![image.png](noterepo:image:${id})\nhttps://x.com/flaviocopes/status/1`,
-  )
-  assert.equal(detectImageMime(PIXEL_PNG, 'application/octet-stream'), 'image/png')
-  assert.equal(
-    validateReflectImageUrl('https://reflect-assets.app/image.png'),
-    'https://reflect-assets.app/image.png',
-  )
-  assert.throws(() => validateReflectImageUrl('http://127.0.0.1/image.png'))
-})
-
-test('merges Reflect imports without overwriting or duplicating notes', async (context) => {
-  const { open } = await setupStore(context)
-  const store = await open()
-  await store.save('2026-08-19', 'Kept from NoteRepo')
-
-  const notes = [
-    { date: '2026-08-19', content: 'Imported from Reflect', updatedAt: null },
-    { date: '2026-08-20', content: 'A new Reflect note', updatedAt: null },
-    { date: '2026-08-21', content: '', updatedAt: null },
-  ]
-  assert.deepEqual(importNotes(store.database, notes), {
-    imported: 1,
-    merged: 1,
-    unchanged: 0,
-    empty: 1,
-  })
-  assert.equal(
-    store.get('2026-08-19').content,
-    'Kept from NoteRepo\n\nImported from Reflect',
-  )
-
-  assert.deepEqual(importNotes(store.database, notes), {
-    imported: 0,
-    merged: 0,
-    unchanged: 2,
-    empty: 1,
-  })
-})
-
-test('upgrades imported Reflect image URLs without duplicating their notes', async (context) => {
-  const { open } = await setupStore(context)
-  const store = await open()
-  const source = 'https://reflect-assets.app/image.svg'
-  const id = 'c'.repeat(64)
-  await store.save('2026-08-22', `Before\n${source}\nAfter`)
-
-  assert.equal(
-    upgradeImageReferences(
-      store.database,
-      new Map([[source, { id, fileName: 'diagram.svg' }]]),
-    ),
-    1,
-  )
-  assert.equal(
-    store.get('2026-08-22').content,
-    `Before\n![diagram.svg](noterepo:image:${id})\nAfter`,
   )
 })
 
