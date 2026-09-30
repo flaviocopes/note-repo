@@ -343,6 +343,26 @@ Electron runs a small server bound to `127.0.0.1`. It stores notes and images in
 
 The `noterepo` tool opens the same database. The app checks SQLite's `data_version` every half second, and when another process changed something, it reloads the days that changed. Every save from the editor carries the text it started from. When that text no longer matches the database, the server merges the two versions line by line instead of overwriting the other change.
 
+## The native version (experiment)
+
+The `native/` folder holds an experimental rewrite in Swift. SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26.
+
+It opens the same `notes.sqlite3`, so you can run it next to the Electron app or instead of it. On the same notes, it's a 1.5 MB app instead of 287 MB, and it uses about 70 MB of memory instead of 190 MB.
+
+Build it with the Xcode command line tools:
+
+```sh
+native/build.sh
+```
+
+The app appears in `native/build/NoteRepo Native.app` and needs macOS 15. It doesn't include the `noterepo` tool yet, so keep the Electron app for that.
+
+Run `swift test` in `native/` to test the shared model. To drive the editor, launch the app with `--self-test` and a temporary folder:
+
+```sh
+open -W --stdout /tmp/noterepo-native.log "native/build/NoteRepo Native.app" --args --user-data-dir /tmp/noterepo-native --self-test
+```
+
 ## License
 
 [MIT](LICENSE)

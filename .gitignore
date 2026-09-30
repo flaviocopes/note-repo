@@ -1,6 +1,8 @@
 node_modules/
 dist/
 release/
+native/.build/
+native/build/
 .astro/
 .cursor/hooks/state/
 .DS_Store
