@@ -83,6 +83,11 @@ const run = async () => {
       await wait(80)
       const commandDFocusedToday = document.activeElement === editor
 
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }))
+      await wait(80)
+      const commandFFocusedSearch = document.activeElement === document.querySelector('#note-search')
+      editor.focus()
+
       editor.innerHTML = '<div>-</div>'
       editor.focus()
       placeCaretAtEnd(editor.firstElementChild)
@@ -359,6 +364,7 @@ const run = async () => {
 
       return {
         commandDFocusedToday,
+        commandFFocusedSearch,
         todayFillsFeed,
         pastDayCompact,
         unorderedList,

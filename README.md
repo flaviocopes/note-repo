@@ -56,7 +56,7 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 | Shortcut | Action |
 | --- | --- |
 | `⌘D` | Go back to today and start writing |
-| `⌘K` | Search your notes |
+| `⌘F` / `⌘K` | Search your notes |
 | `⌥↑` / `⌥↓` | Move to the previous or next day |
 | `Tab` / `Shift+Tab` | Indent or outdent a list item |
 

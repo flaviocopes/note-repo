@@ -957,7 +957,7 @@ window.noteShell = () => ({
 
   handleShortcut(event: KeyboardEvent) {
     if (event.defaultPrevented) return
-    if (event.metaKey && event.key.toLowerCase() === 'k') {
+    if (event.metaKey && ['f', 'k'].includes(event.key.toLowerCase())) {
       event.preventDefault()
       this.searchOpen = true
       document.querySelector<HTMLInputElement>('#note-search')?.focus()
