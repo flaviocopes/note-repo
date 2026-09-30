@@ -212,6 +212,13 @@ enum SelfTest {
         earlierDay.textView.markdown)
     }
 
+    model.open(URL(string: "noterepo://day/\(earlier)")!)
+    await wait(0.4)
+    check("a noterepo://day link opens that day", model.activeDate == earlier, model.activeDate)
+    model.open(URL(string: "noterepo://today")!)
+    await wait(0.4)
+    check("a noterepo://today link opens today", model.activeDate == Day.today, model.activeDate)
+
     view.selectAll(nil)
     check("copy writes Markdown", view.selectionMarkdown() == view.markdown, view.selectionMarkdown())
 
