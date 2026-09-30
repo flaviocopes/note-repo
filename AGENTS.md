@@ -1,14 +1,45 @@
-# NoteRepo workflow
+# NoteRepo
 
-- After every code or configuration change, rebuild the packaged macOS app.
-- Quit the running NoteRepo app and launch the new build before reporting completion.
-- Verify that the restarted app is running the new code.
-- Build with `npm run package:mac`. For live checks, launch `release/mac-arm64/NoteRepo.app` with `--args --remote-debugging-port=9333` and run the `test/electron-*-check.cjs` scripts.
-- Keep the NoteRepo window in front while checks run (`osascript -e 'tell application "NoteRepo" to activate'`). Hidden windows pause timers, `requestAnimationFrame`, and IntersectionObserver, so checks stall and can leave test content in today's note.
-- The live checks write to the real notes database. For screenshots, demos, or risky experiments, launch with `--user-data-dir=<temp folder>` so the user's notes are never shown or changed.
-- A fresh data folder still imports the legacy `~/Library/Application Support/noterepo/notes.json` (see `legacyPaths` in `electron/main.cjs`), so clear any imported days before recording a demo.
-- For note data tasks (seeding demo days, backups, restores, reading a day), use the `noterepo` CLI instead of ad-hoc scripts: `node bin/noterepo.cjs help`, or the packaged `release/mac-arm64/NoteRepo.app/Contents/Resources/bin/noterepo`. It works while the app runs, and the app shows the changes live. `reset --yes` and `restore <backup> --yes` always back up first.
-- `test/electron-cli-check.cjs` resets its notebook, so only run it against an app launched with a temporary `--user-data-dir`, and pass that folder as the second argument.
-- `electron/outline.cjs` is the shared model of a day's text (parsing, renumbering, merging), used by the server, the store and the CLI. Link titles, including Reddit and YouTube, live in `electron/links.cjs`.
+A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents. Both read and write `~/Library/Application Support/NoteRepo/notes.sqlite3`.
+
+## Files
+
+- `Sources/NoteRepoCore/`: shared by the app and the CLI.
+  - `Outline.swift`: the model of a day's text. It parses list lines, renumbers them, and describes items for the CLI. It also merges an outside change into unsaved edits. `serialize` keeps untouched lines as they were saved, and `normalized` formats every line the way the editor saves them.
+  - `Store.swift`: the SQLite database: notes, images, search, backups and restores.
+  - `Links.swift`: inline links and images in a line, X post URLs, and page titles, with Reddit and YouTube handling.
+  - `Dates.swift`, `Images.swift` (image type checks), and `Version.swift`, the one place the version lives.
+- `Sources/NoteRepoApp/`: the app.
+  - `NoteTextView.swift`: the editor, an `NSTextView`. It handles bullets, Tab nesting, paste and drop, and copy as Markdown.
+  - `NoteFormat.swift`: turns Markdown into the editor's text and back.
+  - `Feed.swift`: the scrolling list of days, saving, and reloading days changed outside the app.
+  - `Attachments.swift` and `TweetCard.swift`: images and X post cards.
+  - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus.
+  - `SelfTest.swift` and `Automation.swift`: the `--self-test`, `--round-trip` and `--automation` switches.
+- `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. `Sources/noterepo/main.swift` runs it.
+- `Tests/`: unit tests for the model, link titles and every CLI command.
+- `resources/`: `Info.plist` and the icon. `scripts/build.sh` builds the app, and `scripts/send.swift` talks to `--automation`.
+
+## Build and run
+
+```sh
+swift test                                   # unit tests
+scripts/build.sh                             # build/NoteRepo.app, universal, ad-hoc signed, with the CLI inside
+open build/NoteRepo.app                      # run it on the real notes
+build/NoteRepo.app/Contents/Resources/bin/noterepo help
+ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<version>.zip
+```
+
+## Rules
+
+- After every code or configuration change, run `swift test` and `scripts/build.sh`. Then quit the running NoteRepo (`osascript -e 'tell application id "com.flaviocopes.noterepo" to quit'`), open the new build, and check it's the new version before reporting completion.
+- The user's notes never go into the repo, screenshots or demos. For screenshots, demos and experiments, launch with `--args --user-data-dir <temp folder>` and pair the CLI with `--data-dir` on the same folder.
+- Check editor changes with the self-test, on a temporary folder:
+  `open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test`
+  Launch it with `open`, so the app is active and ⌘Z reaches the Edit menu. Add a check to `SelfTest.swift` for any new editing behavior.
+- Before changing how days are read or saved, back up with `noterepo backup`, then run `--round-trip` on that copy. It must report 0 days that differ.
+- For screenshots, launch with `--automation` and run `swift scripts/send.swift snapshot /tmp/shot.png`. The app captures its own window, so it needs no screen recording permission.
+- For note data tasks like seeding demo days, backups, restores or reading a day, use the `noterepo` CLI. It works while the app runs, and the app shows the changes within a second. `reset --yes` and `restore <backup> --yes` always back up first.
+- Agents depend on the CLI's commands, options and JSON output, so keep them stable and add tests for any change.
 - Keep the UI minimalist and left-aligned. The light theme uses a neutral near-white, not a warm cream tint.
-- `native/` is the experimental SwiftUI and AppKit version. It reads and writes the same `notes.sqlite3`, and `NoteRepoCore` mirrors `electron/outline.cjs`, `store.cjs` and `links.cjs`, so port changes in both directions. Build it with `native/build.sh`, run `swift test` in `native/`, and run the editor checks with `open -W --stdout <log> "native/build/NoteRepo Native.app" --args --user-data-dir <temp folder> --self-test`. `--round-trip` checks that every day saves back unchanged, and `--automation` plus `native/scripts/send.swift` takes window snapshots and runs commands like `jump DATE` or `dark`.
+- Releases are ad-hoc signed and not notarized. Sign the whole bundle and check it with `codesign --verify --deep --strict`.

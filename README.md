@@ -11,9 +11,13 @@ Read the announcement on my blog: [I built NoteRepo, a quiet daily notes app for
 
 [![Watch the 30-second NoteRepo demo](docs/showreel-poster.jpg)](https://github.com/flaviocopes/noterepo/raw/main/docs/showreel.mp4)
 
+NoteRepo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lists what changed in each release.
+
 ## Download
 
-Get `NoteRepo-1.2.0-arm64.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. The build runs on Apple silicon Macs. On an Intel Mac, [build it from source](#run-it-from-source).
+Get `NoteRepo-2.0.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
+
+Coming from 1.x? Replace the old app with the new one. Your notes stay where they are.
 
 ### Opening it the first time
 
@@ -45,7 +49,7 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 - Pasted text is cleaned of stray blank lines, trailing spaces, and invisible characters
 - Rich previews for X and Twitter links pasted on their own line
 - Images added by dragging a file into a day or pasting from the clipboard
-- Image items you can select and delete, drag within a day, or move to another day
+- Image items you can select and delete, or cut and paste into another day
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 
@@ -65,7 +69,7 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 NoteRepo goes online in only two cases, and neither one sends your notes anywhere:
 
 - When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead.
-- When a note contains an X post, it loads the preview from `platform.twitter.com`.
+- When a note contains an X post, it asks X's public embed service for the post's author, text and photo, and draws the preview itself.
 
 ## Use it from the command line
 
@@ -82,7 +86,7 @@ mkdir -p ~/.local/bin
 ln -s /Applications/NoteRepo.app/Contents/Resources/bin/noterepo ~/.local/bin/noterepo
 ```
 
-It runs on the Node.js runtime inside the app, so you don't need Node installed. From a source checkout, run `npm link` instead.
+It's a native program, so you don't need anything else installed. From a source checkout, build the app with `scripts/build.sh` and link `build/NoteRepo.app/Contents/Resources/bin/noterepo` instead.
 
 ### Read a day
 
@@ -252,31 +256,18 @@ noterepo show --data-dir /tmp/noterepo-demo
 
 Run `noterepo help` for every command and option.
 
-## Run it from source
+## Build it from source
 
-You need macOS and [Node.js](https://nodejs.org) 22.13 or later.
-
-Install the dependencies:
+You need macOS 14 or later and Xcode 16 or later, or its command line tools.
 
 ```sh
-npm install
+scripts/build.sh
+open build/NoteRepo.app
 ```
 
-Build the interface and open the app:
+The script builds `build/NoteRepo.app` for Apple silicon and Intel, with the `noterepo` tool inside, and signs it ad hoc. Drag it to your Applications folder.
 
-```sh
-npm run dev
-```
-
-## Build the macOS app
-
-```sh
-npm run package:mac
-```
-
-The app appears in `release/mac-arm64/NoteRepo.app` on Apple silicon Macs. Drag it to your Applications folder.
-
-The build is ad-hoc signed and not notarized. A copy you build yourself opens without a warning. If you send it to another Mac, it can get the same warning as the download, so follow [Opening it the first time](#opening-it-the-first-time).
+A copy you build yourself opens without a warning. If you send it to another Mac, it can get the same warning as the download, so follow [Opening it the first time](#opening-it-the-first-time).
 
 ## Where your notes live
 
@@ -286,82 +277,38 @@ Notes and images are stored in one SQLite database:
 ~/Library/Application Support/NoteRepo/notes.sqlite3
 ```
 
-The development and packaged apps share this file, so back it up like any other document.
+Every copy of NoteRepo on your Mac uses this file, so back it up like any other document, or run `noterepo backup`.
 
 NoteRepo accepts PNG, JPEG, GIF, WebP, and safe SVG images up to 15 MB each. Identical images are stored only once.
 
 ## Development
 
-Run the type check, the build, and the unit tests:
+Run the unit tests. They cover the notes model, link titles and every `noterepo` command:
 
 ```sh
-npm run check
+swift test
 ```
 
-The `test/electron-*-check.cjs` scripts drive the running app through the Chrome DevTools Protocol. Start the packaged app with remote debugging turned on:
+The app has three switches for checking changes. Each one needs `--user-data-dir` with a temporary folder, so your real notes stay out of it:
+
+- `--self-test` types, pastes and undoes in a real editor, then checks what gets saved and merged. It prints one line per check and quits.
+- `--round-trip` opens every day and checks that saving it gives back the same text, without writing anything. Run it on a copy made with `noterepo backup`.
+- `--automation` lets `scripts/send.swift` save a snapshot of the window, or run commands like `jump 2026-09-28` and `dark`.
 
 ```sh
-open -a release/mac-arm64/NoteRepo.app --args --remote-debugging-port=9333
+open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test
+cat /tmp/noterepo-check.log
 ```
 
-Copy the page's `webSocketDebuggerUrl` from `http://127.0.0.1:9333/json` and pass it to each check:
-
-```sh
-node test/electron-cdp-check.cjs ws://127.0.0.1:9333/devtools/page/<id>
-node test/electron-feed-check.cjs ws://127.0.0.1:9333/devtools/page/<id>
-node test/electron-import-check.cjs ws://127.0.0.1:9333/devtools/page/<id> 2026-09-05
-```
-
-The import check also needs a date whose note contains an image.
-
-Be careful: these checks use your real notes database. They edit today's note and restore it afterwards, and they write to a few days in December 1999. Keep the NoteRepo window visible while they run, because macOS pauses hidden windows.
-
-The CLI check drives the app with the packaged `noterepo` tool and resets its notebook, so it refuses to run on your real notes. Launch the app on an empty folder and pass that folder to the check:
-
-```sh
-open -a release/mac-arm64/NoteRepo.app --args --remote-debugging-port=9333 --user-data-dir=/tmp/noterepo-check
-node test/electron-cli-check.cjs ws://127.0.0.1:9333/devtools/page/<id> /tmp/noterepo-check
-```
-
-The app icon lives in `resources/AppIcon.svg`. After editing it, regenerate the PNGs used by the build:
-
-```sh
-npm run icon
-```
-
-The README banner is `docs/banner.html`, styled with the app's own stylesheet. Regenerate the light and dark PNGs with:
-
-```sh
-npm run banner
-```
+The app icon lives in `resources/AppIcon.svg`, and the build uses `resources/AppIcon.png`.
 
 ## How it works
 
-Astro builds the interface. HTMX loads earlier days as you scroll up. Alpine.js tracks the active day, grows each editor, and saves your writing.
+SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26. The editor draws the bullets and numbers in the margin, shows links by their titles, and puts images and X posts inside the text as attachments. When you save, it turns the day back into Markdown list lines.
 
-Electron runs a small server bound to `127.0.0.1`. It stores notes and images in SQLite through Node's built-in `node:sqlite` module, fetches the titles of pasted links, and opens web links in your default browser. The renderer is sandboxed and has no direct access to Node.js.
+Notes and images go into SQLite through the `sqlite3` library that comes with macOS. `NoteRepoCore` holds the parts the app and the `noterepo` tool share: the notes model, the database, and the code that fetches link titles.
 
-The `noterepo` tool opens the same database. The app checks SQLite's `data_version` every half second, and when another process changed something, it reloads the days that changed. Every save from the editor carries the text it started from. When that text no longer matches the database, the server merges the two versions line by line instead of overwriting the other change.
-
-## The native version (experiment)
-
-The `native/` folder holds an experimental rewrite in Swift. SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26.
-
-It opens the same `notes.sqlite3`, so you can run it next to the Electron app or instead of it. On the same notes, it's a 1.5 MB app instead of 287 MB, and it uses about 70 MB of memory instead of 190 MB.
-
-Build it with the Xcode command line tools:
-
-```sh
-native/build.sh
-```
-
-The app appears in `native/build/NoteRepo Native.app` and needs macOS 15. It doesn't include the `noterepo` tool yet, so keep the Electron app for that.
-
-Run `swift test` in `native/` to test the shared model. To drive the editor, launch the app with `--self-test` and a temporary folder:
-
-```sh
-open -W --stdout /tmp/noterepo-native.log "native/build/NoteRepo Native.app" --args --user-data-dir /tmp/noterepo-native --self-test
-```
+The app checks SQLite's `data_version` every half second. When another process changed something, like the `noterepo` tool, it reloads the days that changed. Every save carries the text the editor started from. When that text no longer matches the database, NoteRepo merges the two versions line by line instead of overwriting the other change.
 
 ## License
 

@@ -1,0 +1,44 @@
+# Changelog
+
+Every NoteRepo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/noterepo/releases).
+
+## 2.0.0 (September 30, 2026)
+
+NoteRepo is now a native Mac app written in Swift. It looks and works like 1.2, opens the same notes, and replaces the Electron version.
+
+- **A native app.** SwiftUI draws the window, the sidebar and search, and each day is an AppKit text view. The download went from 122 MB to about 2 MB. On the same notes, the app uses about 70 MB of memory instead of 190 MB, in one process instead of five.
+- **Intel Macs.** The app is universal, so it runs on Intel Macs as well as Apple silicon. It needs macOS 14 or later.
+- **A native `noterepo`.** The command-line tool is now a Swift program. Its commands, options and JSON output are the same as in 1.2, and it lives in the same place inside the app, so your links and your agents' scripts keep working. It doesn't need the Node.js runtime anymore.
+- **X post previews drawn by the app.** NoteRepo reads the post's author, text, photo and counts from X's public embed service and draws the card itself, in light and dark, instead of loading X's embed script.
+- **Your notes come along.** 2.0 reads and writes the same `notes.sqlite3` file, so updating means replacing the app.
+- **No more Reflect importer.** It was a script in the repository, not part of the app.
+
+A few things are different:
+
+- To move an image to another day, cut and paste it. Dragging images between days isn't tested in the native editor yet.
+- NoteRepo no longer imports the `notes.json` file used by its first development builds.
+
+## 1.2.0 (September 30, 2026)
+
+- **YouTube titles.** Paste a YouTube link and you get the video title. It works for Shorts, `youtu.be` links and embed links too, and `noterepo add` does the same. If a video was removed or made private, the link stays as a plain URL instead of reading "- YouTube".
+- **⌘F searches.** ⌘F puts the cursor in the search field, the same as ⌘K.
+- **No more date picker.** The sidebar has only Today and search. Search results, ⌘D and `noterepo://day/…` links still take you to any day.
+
+## 1.1.0 (September 29, 2026)
+
+- **A CLI for agents.** `noterepo` reads and writes the same notes as the app, and every command prints JSON. An agent can add items, links and images, edit, move and remove them, fill many days at once, search, and back up or restore the whole notebook.
+- **Live updates.** Changes made with the CLI show up in the open window within a second. If you're typing in the same day at that moment, your text and the agent's are merged instead of one overwriting the other.
+- **Reddit titles.** Reddit links show the post title. Links to a comment read "Comment to" followed by the post title.
+
+## 1.0.0 (September 29, 2026)
+
+The first public release.
+
+- Opens on today, with the earlier days that have notes above it
+- Bulleted, numbered, and nested lists
+- Pasted links show the page title and domain
+- Previews for X posts
+- Images by drag and drop or paste
+- Search with ⌘K, and ⌘D to jump back to today
+- Light and dark appearance that follows macOS
+- An importer for Reflect daily notes

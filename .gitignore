@@ -1,12 +1,9 @@
-node_modules/
-dist/
-release/
-native/.build/
-native/build/
-.astro/
-.cursor/hooks/state/
 .DS_Store
-npm-debug.log*
+.build/
+.swiftpm/
+build/
+dist/
+.cursor/hooks/state/
 *.sqlite3
 *.sqlite3-*
 notes.json
