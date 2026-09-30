@@ -129,6 +129,9 @@ enum SelfTest {
     view.insertNewline(nil)
     check("Enter on an empty nested item outdents it", view.markdown.hasSuffix("- After the list\n"), view.markdown)
     check("the empty item stays at the top level", view.paragraphs.last?.style.depth == 0)
+    view.layoutManager!.ensureLayout(for: view.textContainer!)
+    let emptyLine = view.layoutManager!.extraLineFragmentRect
+    check("the caret on an empty last item is a full line tall", emptyLine.height == NoteFormat.lineHeight, "\(emptyLine)")
 
     paste(view, "https://flaviocopes.com")
     check("a pasted link becomes its own item", view.markdown.hasSuffix("- https://flaviocopes.com\n"), view.markdown)

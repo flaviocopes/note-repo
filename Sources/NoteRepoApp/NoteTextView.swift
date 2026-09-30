@@ -38,6 +38,17 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
     return true
   }
 
+  // The delegate isn't asked about the empty line after a trailing newline, so give it a full line's height here.
+  override func setExtraLineFragmentRect(
+    _ fragmentRect: NSRect, usedRect: NSRect, textContainer container: NSTextContainer
+  ) {
+    var fragment = fragmentRect
+    var used = usedRect
+    fragment.size.height = NoteFormat.lineHeight
+    used.size.height = NoteFormat.lineHeight
+    super.setExtraLineFragmentRect(fragment, usedRect: used, textContainer: container)
+  }
+
   override func drawUnderline(
     forGlyphRange glyphRange: NSRange, underlineType underlineVal: NSUnderlineStyle, baselineOffset: CGFloat,
     lineFragmentRect lineRect: NSRect, lineFragmentGlyphRange lineGlyphRange: NSRange, containerOrigin: NSPoint
