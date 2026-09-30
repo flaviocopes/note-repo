@@ -2,6 +2,13 @@
 
 Every NoteRepo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/noterepo/releases).
 
+## 2.1.0 (September 30, 2026)
+
+- **Updates from inside the app.** Once a day, NoteRepo asks GitHub for a newer version. When there is one, it shows what's new, and **Install and Relaunch** puts it in place of the old app. **NoteRepo → Check for Updates…** checks right away. 2.1 is the last version you install by hand.
+- **Several lines in one item.** `⌥Return` starts a new line inside the same item, instead of a new item. It's saved as `<br>`, so each item is still one line of Markdown, and the `noterepo` CLI reads and writes it the same way.
+- **Search results stay in their panel.** A search with many matches used to spill its results over the sidebar and the window buttons. Now they scroll inside the panel.
+- **The cursor on an empty item.** On an empty last item, the blinking cursor was shorter than the line and sat too high. Now it lines up with the bullet.
+
 ## 2.0.0 (September 30, 2026)
 
 NoteRepo is now a native Mac app written in Swift. It looks and works like 1.2, opens the same notes, and replaces the Electron version.
