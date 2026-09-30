@@ -55,6 +55,7 @@ final class AppModel {
     results = notes.map { note in
       let excerpt = note.content
         .replacingOccurrences(of: #"!\[[^\]]*\]\(noterepo:image:[a-f0-9]{64}\)"#, with: "[Image]", options: [.regularExpression, .caseInsensitive])
+        .replacingOccurrences(of: "<br>", with: " ")
         .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
       return SearchResult(date: note.date, label: Day.shortTitle(note.date), excerpt: String(excerpt.prefix(120)))

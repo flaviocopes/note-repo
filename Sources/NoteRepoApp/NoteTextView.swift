@@ -399,8 +399,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
 
   override func insertTab(_ sender: Any?) { indent(by: 1) }
   override func insertBacktab(_ sender: Any?) { indent(by: -1) }
-  override func insertLineBreak(_ sender: Any?) { insertNewline(sender) }
-  override func insertNewlineIgnoringFieldEditor(_ sender: Any?) { insertNewline(sender) }
+  override func insertNewlineIgnoringFieldEditor(_ sender: Any?) { insertLineBreak(sender) }
 
   override func insertNewline(_ sender: Any?) {
     guard let index = currentIndex else { return super.insertNewline(sender) }

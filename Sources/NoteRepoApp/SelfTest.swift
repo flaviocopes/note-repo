@@ -138,6 +138,22 @@ enum SelfTest {
     let emptyLine = view.layoutManager!.extraLineFragmentRect
     check("the caret on an empty last item is a full line tall", emptyLine.height == NoteFormat.lineHeight, "\(emptyLine)")
 
+    let itemCount = view.paragraphs.count
+    type(view, "Groceries")
+    await press("\r", keyCode: 36, modifiers: .option)
+    type(view, "milk, eggs")
+    check(
+      "Option-Return breaks the line inside the item",
+      view.paragraphs.count == itemCount && view.markdown.hasSuffix("- After the list\n- Groceries<br>milk, eggs"),
+      view.markdown)
+    let reloaded = NoteTextView.make()
+    reloaded.load(view.markdown)
+    check(
+      "a line break inside an item survives a reload",
+      reloaded.markdown == view.markdown && reloaded.textStorage!.string.hasSuffix("Groceries\u{2028}milk, eggs"),
+      reloaded.markdown)
+    view.insertNewline(nil)
+
     paste(view, "https://flaviocopes.com")
     check("a pasted link becomes its own item", view.markdown.hasSuffix("- https://flaviocopes.com\n"), view.markdown)
     var titled = false

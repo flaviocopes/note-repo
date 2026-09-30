@@ -113,8 +113,8 @@ enum NoteFormat {
     for token in Links.tokens(body) {
       switch token {
       case .text(let text):
-        result.append(
-          NSAttributedString(string: text.replacingOccurrences(of: "\u{00a0}", with: " "), attributes: attributes))
+        let plain = text.replacingOccurrences(of: "\u{00a0}", with: " ").replacingOccurrences(of: "<br>", with: "\u{2028}")
+        result.append(NSAttributedString(string: plain, attributes: attributes))
       case .link(let title, let url):
         var linkAttributes = attributes
         linkAttributes[.link] = url
@@ -146,7 +146,7 @@ enum NoteFormat {
         }
       }
     }
-    return markdown.replacingOccurrences(of: "\u{00a0}", with: " ").replacingOccurrences(of: "\u{2028}", with: "\n")
+    return markdown.replacingOccurrences(of: "\u{00a0}", with: " ").replacingOccurrences(of: "\u{2028}", with: "<br>")
   }
 
   static func entries(_ text: NSAttributedString, range: NSRange? = nil, trailingStyle: ListStyle?) -> [OutlineEntry] {

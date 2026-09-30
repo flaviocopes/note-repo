@@ -77,6 +77,13 @@ func content(_ day: JSON) -> String? { day["content"]?.string }
   #expect(piped["items"]!.array.last?["text"]?.string == "Piped from another tool")
 }
 
+@Test func keepsALineBreakInsideOneItem() async throws {
+  let book = try Notebook()
+  let day = try await book.ok("add", "Groceries<br>milk, eggs", "--date", "2026-09-24")
+  #expect(content(day) == "- Groceries<br>milk, eggs")
+  #expect(day["items"]!.array.map { $0["text"]?.string } == ["Groceries<br>milk, eggs"])
+}
+
 @Test func writesManyDaysAtOnceAndListsThem() async throws {
   let book = try Notebook()
   let json = #"{"2026-09-25": "* Newsletter sent\n    - Deep\n1) One\n2) Two", "2026-09-26": ["- https://news.ycombinator.com/item?id=49854875"]}"#
