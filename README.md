@@ -41,6 +41,7 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 - Fast text search
 - Pasted URLs become links showing the page title and domain, and a link pasted on its own starts a new bullet
 - Reddit links show the post title, and links to a comment read "Comment to" followed by the post title
+- YouTube links show the video title, including Shorts, `youtu.be` and embed links
 - Pasted text is cleaned of stray blank lines, trailing spaces, and invisible characters
 - Rich previews for X and Twitter links pasted on their own line
 - Images added by dragging a file into a day or pasting from the clipboard
@@ -64,7 +65,7 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 
 NoteRepo goes online in only two cases, and neither one sends your notes anywhere:
 
-- When you paste a link, it downloads that page to read its title. For a Reddit link, it asks Reddit's embed service for the post title instead.
+- When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead.
 - When a note contains an X post, it loads the preview from `platform.twitter.com`.
 
 ## Use it from the command line
@@ -153,7 +154,7 @@ A URL on its own gets its page title, the same as pasting it in the app:
 noterepo add https://sqlite.org/wal.html
 ```
 
-It's saved as `[Write-Ahead Logging](https://sqlite.org/wal.html) (sqlite.org)`. Reddit links get the post title, and links to a comment read "Comment to" followed by the post title. X posts stay as URLs, so the app shows the preview. Add `--raw` to keep any URL as it is.
+It's saved as `[Write-Ahead Logging](https://sqlite.org/wal.html) (sqlite.org)`. Reddit links get the post title, and links to a comment read "Comment to" followed by the post title. YouTube links get the video title. X posts stay as URLs, so the app shows the preview. Add `--raw` to keep any URL as it is.
 
 To check the title without writing anything, use `title`:
 

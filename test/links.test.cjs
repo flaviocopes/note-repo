@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { fetchLinkTitle, linkText, redditLink } = require('../electron/links.cjs')
+const { fetchLinkTitle, linkText, redditLink, youtubeVideo } = require('../electron/links.cjs')
 
 const POST = 'https://www.reddit.com/r/programming/comments/1d50fcu/htmx_simplicity_in_an_age_of_complicated_solutions/'
 
@@ -79,6 +79,59 @@ test('follows Reddit share links to the post they point to', async (context) => 
 test('leaves Reddit links without a title when Reddit does not answer', async (context) => {
   stubFetch(context, () => json({ message: 'Not Found' }, 404))
   assert.equal(await fetchLinkTitle(POST), null)
+})
+
+test('recognizes YouTube video links', () => {
+  for (const url of [
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://youtube.com/watch?v=dQw4w9WgXcQ&list=PL590L5WQmH8fJ54F369BLDSqIwcs-TCfs&t=42s',
+    'https://m.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://music.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://youtu.be/dQw4w9WgXcQ?si=Qm3kD8TbZ5xLr2Vn',
+    'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+    'https://www.youtube.com/live/dQw4w9WgXcQ?feature=share',
+    'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+  ]) {
+    assert.equal(youtubeVideo(url), 'dQw4w9WgXcQ', url)
+  }
+  assert.equal(youtubeVideo('https://www.youtube.com/@flaviocopes'), null)
+  assert.equal(youtubeVideo('https://www.youtube.com/playlist?list=PL590L5WQmH8fJ54F369BLDSqIwcs-TCfs'), null)
+  assert.equal(youtubeVideo('https://www.youtube.com/watch?v=short'), null)
+  assert.equal(youtubeVideo('https://notyoutube.com/watch?v=dQw4w9WgXcQ'), null)
+})
+
+test('uses the YouTube video title', async (context) => {
+  const requests = stubFetch(context, () =>
+    json({ title: 'Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)', author_name: 'Rick Astley' }),
+  )
+
+  assert.equal(
+    await fetchLinkTitle('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'),
+    'Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)',
+  )
+  assert.equal(new URL(requests[0]).origin + new URL(requests[0]).pathname, 'https://www.youtube.com/oembed')
+  assert.equal(new URL(requests[0]).searchParams.get('url'), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+})
+
+test('reads the watch page when a YouTube video cannot be embedded', async (context) => {
+  const requests = stubFetch(context, (url) => {
+    if (url.includes('/oembed')) return new Response('Unauthorized', { status: 401 })
+    return new Response('<head><meta property="og:title" content="A Music Video"><title>A Music Video - YouTube</title></head>', {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    })
+  })
+
+  assert.equal(await fetchLinkTitle('https://youtu.be/dQw4w9WgXcQ'), 'A Music Video')
+  assert.equal(requests[1], 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+})
+
+test('leaves missing YouTube videos without a title', async (context) => {
+  stubFetch(context, (url) => {
+    if (url.includes('/oembed')) return new Response('Bad Request', { status: 400 })
+    return new Response('<head><title> - YouTube</title></head>', { headers: { 'Content-Type': 'text/html' } })
+  })
+  assert.equal(await fetchLinkTitle('https://www.youtube.com/watch?v=aaaaaaaaaaa'), null)
 })
 
 test('formats a titled link the way the editor saves it', () => {

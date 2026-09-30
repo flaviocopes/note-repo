@@ -183,10 +183,51 @@ const fetchRedditTitle = async (value) => {
   return link.comment ? `Comment to ${postTitle}` : postTitle
 }
 
+const YOUTUBE_HOST = /^(?:(?:www|m|music)\.)?youtube(?:-nocookie)?\.com$/i
+const YOUTUBE_PATH = /^(?:shorts|live|embed|v)$/i
+const YOUTUBE_ID = /^[\w-]{11}$/
+
+const youtubeVideo = (value) => {
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  const parts = url.pathname.split('/').filter(Boolean)
+  let id = null
+  if (url.hostname.toLowerCase() === 'youtu.be') id = parts[0]
+  else if (YOUTUBE_HOST.test(url.hostname)) {
+    if (parts[0] === 'watch') id = url.searchParams.get('v')
+    else if (YOUTUBE_PATH.test(parts[0] || '')) id = parts[1]
+  }
+  return YOUTUBE_ID.test(id || '') ? id : null
+}
+
+const fetchYoutubeTitle = async (id) => {
+  const video = `https://www.youtube.com/watch?v=${id}`
+  const response = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(video)}`, {
+    headers: { Accept: 'application/json', 'User-Agent': PAGE_USER_AGENT },
+    signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
+  })
+  if (!response.ok) {
+    await response.body?.cancel()
+    if (response.status !== 401 && response.status !== 403) return null
+    const title = await fetchPageTitle(new URL(video))
+    return title && !/^-?\s*YouTube$/i.test(title) ? title : null
+  }
+  const { title } = await response.json()
+  return (typeof title === 'string' && cleanPageText(title).slice(0, 300)) || null
+}
+
 const fetchLinkTitle = async (value) => {
   const url = new URL(value)
   if (!/^https?:$/.test(url.protocol)) throw new TypeError('Only web links have titles')
-  const title = redditLink(url.href) ? fetchRedditTitle(url.href) : fetchPageTitle(url)
+  const video = youtubeVideo(url.href)
+  let title
+  if (video) title = fetchYoutubeTitle(video)
+  else if (redditLink(url.href)) title = fetchRedditTitle(url.href)
+  else title = fetchPageTitle(url)
   return title.catch(() => null)
 }
 
@@ -202,4 +243,5 @@ module.exports = {
   linkText,
   redditLink,
   tweetDetails,
+  youtubeVideo,
 }

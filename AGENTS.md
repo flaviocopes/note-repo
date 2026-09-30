@@ -9,5 +9,5 @@
 - A fresh data folder still imports the legacy `~/Library/Application Support/noterepo/notes.json` (see `legacyPaths` in `electron/main.cjs`), so clear any imported days before recording a demo.
 - For note data tasks (seeding demo days, backups, restores, reading a day), use the `noterepo` CLI instead of ad-hoc scripts: `node bin/noterepo.cjs help`, or the packaged `release/mac-arm64/NoteRepo.app/Contents/Resources/bin/noterepo`. It works while the app runs, and the app shows the changes live. `reset --yes` and `restore <backup> --yes` always back up first.
 - `test/electron-cli-check.cjs` resets its notebook, so only run it against an app launched with a temporary `--user-data-dir`, and pass that folder as the second argument.
-- `electron/outline.cjs` is the shared model of a day's text (parsing, renumbering, merging), used by the server, the store and the CLI. Link titles, including Reddit, live in `electron/links.cjs`.
+- `electron/outline.cjs` is the shared model of a day's text (parsing, renumbering, merging), used by the server, the store and the CLI. Link titles, including Reddit and YouTube, live in `electron/links.cjs`.
 - Keep the UI minimalist and left-aligned. The light theme uses a neutral near-white, not a warm cream tint.
