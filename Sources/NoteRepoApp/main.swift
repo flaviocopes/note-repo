@@ -31,6 +31,12 @@ struct NoteRepoApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
   private let model = AppDelegate.model!
 
+  init() {
+    if !CommandLine.arguments.contains("--self-test") {
+      AppUpdater.shared.start(repository: "flaviocopes/noterepo")
+    }
+  }
+
   var body: some Scene {
     Window("NoteRepo", id: "main") {
       ContentView(model: model)
@@ -38,6 +44,11 @@ struct NoteRepoApp: App {
     .windowStyle(.hiddenTitleBar)
     .defaultSize(width: 1240, height: 790)
     .commands {
+      CommandGroup(after: .appInfo) {
+        Button("Check for Updates…") {
+          AppUpdater.shared.checkForUpdates()
+        }
+      }
       CommandGroup(replacing: .newItem) {}
       CommandGroup(replacing: .textEditing) {}
       CommandMenu("Go") {

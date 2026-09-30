@@ -246,6 +246,9 @@ enum SelfTest {
     view.selectAll(nil)
     check("copy writes Markdown", view.selectionMarkdown() == view.markdown, view.selectionMarkdown())
 
+    let appMenu = NSApp.mainMenu?.items.first?.submenu?.items.map(\.title) ?? []
+    check("the app menu has Check for Updates…", appMenu.contains("Check for Updates…"), "\(appMenu)")
+
     let shownResults = model.results
     model.results = (1...20).map {
       SearchResult(date: Day.adding(-$0, to: Day.today), label: "Day \($0)", excerpt: "- Try the new cli tool")

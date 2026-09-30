@@ -11,11 +11,12 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
   - `Dates.swift`, `Images.swift` (image type checks), and `Version.swift`, the one place the version lives.
 - `Sources/NoteRepoApp/`: the app.
   - `NoteTextView.swift`: the editor, an `NSTextView`. It handles bullets, Tab nesting, paste and drop, and copy as Markdown.
-  - `NoteFormat.swift`: turns Markdown into the editor's text and back.
+  - `NoteFormat.swift`: turns Markdown into the editor's text and back. A line break inside an item (⌥Return) is a U+2028 line separator in the editor and `<br>` in the saved text, so every item stays on one line.
   - `Feed.swift`: the scrolling list of days, saving, and reloading days changed outside the app.
   - `Attachments.swift` and `TweetCard.swift`: images and X post cards.
   - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus.
   - `SelfTest.swift` and `Automation.swift`: the `--self-test`, `--round-trip` and `--automation` switches.
+  - `AppUpdater.swift`: checks the GitHub releases once a day and installs updates. It's an identical copy of the template in the `mac-app-updater` skill, so change the template and copy it over instead of editing it here.
 - `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. `Sources/noterepo/main.swift` runs it.
 - `Tests/`: unit tests for the model, link titles and every CLI command.
 - `resources/`: `Info.plist` and the icon. `scripts/build.sh` builds the app, and `scripts/send.swift` talks to `--automation`.
@@ -45,3 +46,4 @@ ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<versi
 - Agents depend on the CLI's commands, options and JSON output, so keep them stable and add tests for any change.
 - Keep the UI minimalist and left-aligned. The light theme uses a neutral near-white, not a warm cream tint.
 - Releases are ad-hoc signed and not notarized. Sign the whole bundle and check it with `codesign --verify --deep --strict`. Every release gets a section in `CHANGELOG.md`, newest first.
+- The updater trusts the GitHub release. Every release needs its `vX.Y.Z` tag, the zip made with the `ditto` command above attached, and a version in `Version.swift` that matches the tag, or the app refuses the update. It shows the release notes up to the first `## Install` heading, so put what's new first.

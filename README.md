@@ -35,12 +35,23 @@ The same command fixes a message saying NoteRepo is damaged. You don't need to t
 
 On a work laptop you might not be able to install apps in `/Applications`. You can keep NoteRepo in the `Applications` folder inside your home folder, and run the command on `~/Applications/NoteRepo.app`. If your company blocks apps that aren't notarized, ask your IT team.
 
+### Updates
+
+Once a day, NoteRepo asks GitHub whether there's a newer version. When there is, it shows what's new, and **Install and Relaunch** puts it in place of the old one. **NoteRepo → Check for Updates…** checks right away.
+
+To turn off the daily check, run this in Terminal:
+
+```sh
+defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
+```
+
 ## Features
 
 - Today is always ready to write in, starting with a bullet
 - Continuous scrolling back through the days that have notes
 - Bulleted and numbered lists started with `-` or `1.`
 - Nested list items with `Tab` and `Shift+Tab`
+- Several lines in one item with `⌥Return`
 - Automatic saving
 - Fast text search
 - Pasted URLs become links showing the page title and domain, and a link pasted on its own starts a new bullet
@@ -63,13 +74,15 @@ On a work laptop you might not be able to install apps in `/Applications`. You c
 | `⌘F` / `⌘K` | Search your notes |
 | `⌥↑` / `⌥↓` | Move to the previous or next day |
 | `Tab` / `Shift+Tab` | Indent or outdent a list item |
+| `⌥Return` | Start a new line in the same item |
 
 ## Privacy
 
-NoteRepo goes online in only two cases, and neither one sends your notes anywhere:
+NoteRepo goes online in only three cases, and none of them sends your notes anywhere:
 
 - When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead.
 - When a note contains an X post, it asks X's public embed service for the post's author, text and photo, and draws the preview itself.
+- Once a day, it asks GitHub for the latest NoteRepo release, to check for an update. The request carries the app's name and version.
 
 ## Use it from the command line
 
@@ -149,6 +162,12 @@ Use `--date` for another day. `--after` and `--before` take an item number to pl
 ```sh
 noterepo add "Pick up the parcel" --date yesterday
 noterepo add "Write the post" --after 1 --level 1 --numbered
+```
+
+`<br>` is a line break inside an item, the same as `⌥Return` in the app:
+
+```sh
+noterepo add "Groceries<br>milk, eggs"
 ```
 
 A URL on its own gets its page title, the same as pasting it in the app:
@@ -304,7 +323,7 @@ The app icon lives in `resources/AppIcon.svg`, and the build uses `resources/App
 
 ## How it works
 
-SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26. The editor draws the bullets and numbers in the margin, shows links by their titles, and puts images and X posts inside the text as attachments. When you save, it turns the day back into Markdown list lines.
+SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26. The editor draws the bullets and numbers in the margin, shows links by their titles, and puts images and X posts inside the text as attachments. When you save, it turns the day back into Markdown list lines. A line break inside an item is saved as `<br>`, so every item stays on one line.
 
 Notes and images go into SQLite through the `sqlite3` library that comes with macOS. `NoteRepoCore` holds the parts the app and the `noterepo` tool share: the notes model, the database, and the code that fetches link titles.
 
