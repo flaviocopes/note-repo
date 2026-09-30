@@ -6,7 +6,7 @@ Every NoteRepo release, newest first. Downloads are on the [releases page](https
 
 NoteRepo is now a native Mac app written in Swift. It looks and works like 1.2, opens the same notes, and replaces the Electron version.
 
-- **A native app.** SwiftUI draws the window, the sidebar and search, and each day is an AppKit text view. The download went from 122 MB to about 2 MB. On the same notes, the app uses about 70 MB of memory instead of 190 MB, in one process instead of five.
+- **A native app.** SwiftUI draws the window, the sidebar and search, and each day is an AppKit text view. The download went from 122 MB to 1.5 MB. On the same notes, the app uses about 70 MB of memory instead of 190 MB, in one process instead of five.
 - **Intel Macs.** The app is universal, so it runs on Intel Macs as well as Apple silicon. It needs macOS 14 or later.
 - **A native `noterepo`.** The command-line tool is now a Swift program. Its commands, options and JSON output are the same as in 1.2, and it lives in the same place inside the app, so your links and your agents' scripts keep working. It doesn't need the Node.js runtime anymore.
 - **X post previews drawn by the app.** NoteRepo reads the post's author, text, photo and counts from X's public embed service and draws the card itself, in light and dark, instead of loading X's embed script.
