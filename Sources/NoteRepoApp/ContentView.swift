@@ -119,8 +119,8 @@ struct SearchResultsView: View {
     }
     .scrollIndicators(.never)
     .frame(width: 156)
-    .fixedSize(horizontal: false, vertical: true)
     .frame(maxHeight: 260)
+    .fixedSize(horizontal: false, vertical: true)
     .background(RoundedRectangle(cornerRadius: 6).fill(Color(Theme.popover)))
     .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color(Theme.divider), lineWidth: 1))
     .shadow(color: Color(Theme.shadow), radius: 15, y: 12)

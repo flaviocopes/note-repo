@@ -1,5 +1,6 @@
 import AppKit
 import NoteRepoCore
+import SwiftUI
 
 @MainActor
 enum SelfTest {
@@ -40,6 +41,10 @@ enum SelfTest {
     for character in text {
       view.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0))
     }
+  }
+
+  static func descendants(_ view: NSView) -> [NSView] {
+    view.subviews + view.subviews.flatMap(descendants)
   }
 
   static func paste(_ view: NoteTextView, _ text: String) {
@@ -224,6 +229,21 @@ enum SelfTest {
 
     view.selectAll(nil)
     check("copy writes Markdown", view.selectionMarkdown() == view.markdown, view.selectionMarkdown())
+
+    let shownResults = model.results
+    model.results = (1...20).map {
+      SearchResult(date: Day.adding(-$0, to: Day.today), label: "Day \($0)", excerpt: "- Try the new cli tool")
+    }
+    let panel = NSHostingView(rootView: SearchResultsView(model: model))
+    panel.frame.size = panel.fittingSize
+    panel.layoutSubtreeIfNeeded()
+    let list = descendants(panel).compactMap { $0 as? NSScrollView }.first
+    let listFrame = list.map { $0.convert($0.bounds, to: panel) } ?? .null
+    check(
+      "many search results scroll inside their panel",
+      panel.bounds.height <= 260 && panel.bounds.insetBy(dx: -1, dy: -1).contains(listFrame),
+      "panel \(panel.bounds), list \(listFrame)")
+    model.results = shownResults
 
     print(failures.isEmpty ? "self-test passed" : "self-test failed: \(failures.count)")
     exit(failures.isEmpty ? 0 : 1)
