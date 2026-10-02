@@ -38,7 +38,7 @@ ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<versi
 - Check editor changes with the self-test, on a temporary folder:
   `open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test`
   Launch it with `open`, so the app is active and ⌘Z reaches the Edit menu. Add a check to `SelfTest.swift` for any new editing behavior.
-- Quit NoteRepo before any `open ... --args` launch. If it's already running, `open` only brings it forward and drops the arguments, so `open -W` hangs.
+- Quit NoteRepo before any `open ... --args` launch. If it's already running, `open` only brings it forward and drops the arguments, so `open -W` hangs. Opening it right after it quits, or right after a self-test exits, can fail with error -600, so wait a second and retry.
 - Agents can't send keystrokes through System Events here. Drive the editor from `SelfTest.swift`, or with `--automation` commands like `swift scripts/send.swift command today`.
 - Before changing how days are read or saved, back up with `noterepo backup`, then run `--round-trip` on that copy. It must report 0 days that differ.
 - For screenshots, launch with `--automation` and run `swift scripts/send.swift snapshot /tmp/shot.png`. The app captures its own window, so it needs no screen recording permission.
