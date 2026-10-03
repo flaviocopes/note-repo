@@ -1,3 +1,3 @@
 public enum NoteRepoVersion {
-  public static let current = "2.1.1"
+  public static let current = "2.2.0"
 }
