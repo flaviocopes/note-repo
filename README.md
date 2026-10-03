@@ -15,25 +15,15 @@ NoteRepo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lis
 
 ## Download
 
-Get `NoteRepo-2.1.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
+Get `NoteRepo-2.1.1.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
 
 Coming from 1.x? Replace the old app with the new one. Your notes stay where they are.
 
 ### Opening it the first time
 
-NoteRepo isn't signed with an Apple Developer ID or notarized by Apple, and I don't plan to change that. So the first time you open it, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then allow it in one of two ways.
+NoteRepo is signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS asks if you're sure you want to open an app downloaded from the internet. Click **Open**.
 
-In System Settings, open **Privacy & Security** and scroll down to the message about NoteRepo. Click **Open Anyway**, confirm, and open the app again. The button shows up for about an hour after you try to open the app.
-
-In Terminal, remove the quarantine flag macOS adds to downloaded files, then open the app:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/NoteRepo.app
-```
-
-The same command fixes a message saying NoteRepo is damaged. You don't need to turn off Gatekeeper for either option.
-
-On a work laptop you might not be able to install apps in `/Applications`. You can keep NoteRepo in the `Applications` folder inside your home folder, and run the command on `~/Applications/NoteRepo.app`. If your company blocks apps that aren't notarized, ask your IT team.
+On a work laptop you might not be able to install apps in `/Applications`. You can keep NoteRepo in the `Applications` folder inside your home folder instead.
 
 ### Updates
 
@@ -284,9 +274,13 @@ scripts/build.sh
 open build/NoteRepo.app
 ```
 
-The script builds `build/NoteRepo.app` for Apple silicon and Intel, with the `noterepo` tool inside, and signs it ad hoc. Drag it to your Applications folder.
+The script builds `build/NoteRepo.app` for Apple silicon and Intel, with the `noterepo` tool inside. It signs the app with my Developer ID when that certificate is in the keychain, and ad hoc everywhere else, so your copy is signed ad hoc. Drag it to your Applications folder.
 
-A copy you build yourself opens without a warning. If you send it to another Mac, it can get the same warning as the download, so follow [Opening it the first time](#opening-it-the-first-time).
+A copy you build yourself opens without a warning on your Mac. If you send it to another Mac, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**, or remove the quarantine flag in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/NoteRepo.app
+```
 
 ## Where your notes live
 
