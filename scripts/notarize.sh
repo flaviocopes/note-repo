@@ -10,7 +10,7 @@ version=$(sed -n 's/.*current = "\(.*\)".*/\1/p' Sources/NoteRepoCore/Version.sw
 app=build/NoteRepo.app
 zip=dist/NoteRepo-$version.zip
 
-if ! codesign -dv "$app" 2>&1 | grep -q '^TeamIdentifier=DGFKNTAG99$'; then
+if [[ $(codesign -dv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p') != DGFKNTAG99 ]]; then
   echo "$app isn't signed with the Developer ID certificate, so Apple won't notarize it." >&2
   exit 1
 fi
