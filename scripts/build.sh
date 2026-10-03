@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Builds build/NoteRepo.app for Apple silicon and Intel, with the noterepo CLI inside, ad-hoc signed.
+# Builds build/NoteRepo.app for Apple silicon and Intel, with the noterepo CLI inside.
+# Signs it with Flavio's Developer ID when the certificate is in the keychain, and ad-hoc everywhere else (CI, forks).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,6 +24,15 @@ done
 iconutil -c icns build/AppIcon.iconset -o "$app/Contents/Resources/AppIcon.icns"
 rm -rf build/AppIcon.iconset
 
-codesign --force --sign - "$app/Contents/Resources/bin/noterepo"
-codesign --force --deep --sign - "$app"
-echo "Built $app $version for $(lipo -archs "$app/Contents/MacOS/NoteRepo")"
+identity=$(security find-identity -v -p codesigning | awk '/"Developer ID Application: Flavio Copes \(DGFKNTAG99\)"/ { print $2; exit }')
+if [[ -n $identity ]]; then
+  sign=(--sign "$identity" --options runtime --timestamp)
+  signature="Developer ID"
+else
+  sign=(--sign -)
+  signature="ad-hoc"
+fi
+codesign --force "${sign[@]}" "$app/Contents/Resources/bin/noterepo"
+codesign --force "${sign[@]}" "$app"
+codesign --verify --deep --strict "$app"
+echo "Built $app $version for $(lipo -archs "$app/Contents/MacOS/NoteRepo"), $signature signed"

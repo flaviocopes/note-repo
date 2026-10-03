@@ -19,16 +19,16 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
   - `AppUpdater.swift`: checks the GitHub releases once a day and installs updates. It's an identical copy of the template in the `mac-app-updater` skill, so change the template and copy it over instead of editing it here.
 - `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. `Sources/noterepo/main.swift` runs it.
 - `Tests/`: unit tests for the model, link titles and every CLI command.
-- `resources/`: `Info.plist` and the icon. `scripts/build.sh` builds the app, and `scripts/send.swift` talks to `--automation`.
+- `resources/`: `Info.plist` and the icon. `scripts/build.sh` builds the app, `scripts/notarize.sh` makes the notarized release zip, and `scripts/send.swift` talks to `--automation`.
 
 ## Build and run
 
 ```sh
 swift test                                   # unit tests
-scripts/build.sh                             # build/NoteRepo.app, universal, ad-hoc signed, with the CLI inside
+scripts/build.sh                             # build/NoteRepo.app, universal, with the CLI inside, Developer ID signed when the certificate is in the keychain
 open build/NoteRepo.app                      # run it on the real notes
 build/NoteRepo.app/Contents/Resources/bin/noterepo help
-ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<version>.zip
+scripts/notarize.sh                          # build, notarize, staple, and write dist/NoteRepo-<version>.zip
 ```
 
 ## Rules
@@ -45,5 +45,5 @@ ditto -c -k --sequesterRsrc --keepParent build/NoteRepo.app dist/NoteRepo-<versi
 - For note data tasks like seeding demo days, backups, restores or reading a day, use the `noterepo` CLI. It works while the app runs, and the app shows the changes within a second. `reset --yes` and `restore <backup> --yes` always back up first.
 - Agents depend on the CLI's commands, options and JSON output, so keep them stable and add tests for any change.
 - Keep the UI minimalist and left-aligned. The light theme uses a neutral near-white, not a warm cream tint.
-- Releases are ad-hoc signed and not notarized. Sign the whole bundle and check it with `codesign --verify --deep --strict`. Every release gets a section in `CHANGELOG.md`, newest first.
-- The updater trusts the GitHub release. Every release needs its `vX.Y.Z` tag, the zip made with the `ditto` command above attached, and a version in `Version.swift` that matches the tag, or the app refuses the update. It shows the release notes up to the first `## Install` heading, so put what's new first.
+- Releases are signed with Flavio's Developer ID (team `DGFKNTAG99`) with the hardened runtime, and notarized by `scripts/notarize.sh`. It needs the certificate in the keychain and a notarytool keychain profile named `notary`, and it refuses an ad-hoc build. CI and forks have no certificate, so `scripts/build.sh` signs ad-hoc there. Every release gets a section in `CHANGELOG.md`, newest first.
+- The updater trusts the GitHub release. Every release needs its `vX.Y.Z` tag, the zip from `scripts/notarize.sh` attached, and a version in `Version.swift` that matches the tag, or the app refuses the update. It shows the release notes up to the first `## Install` heading, so put what's new first.
