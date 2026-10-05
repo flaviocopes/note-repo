@@ -96,6 +96,9 @@ public enum CLI {
       restore PATH --yes              Back up, then replace every note with a backup
                                       (a backup folder or a notes.sqlite3 file)
 
+    Agent
+      capabilities [--json]           Summary, tasks and release history for agents
+
     Options for every command
       --data-dir DIR                  Use another data folder (or NOTEREPO_DATA_DIR).
                                       Pair it with the app's --user-data-dir.
@@ -748,11 +751,20 @@ public enum CLI {
       if position + 1 < args.count { rest += args[(position + 1)...] }
 
       if args.contains("--version") || args.contains("-v") {
-        output.stdout = "\(NoteRepoVersion.current)\n"
+        output.stdout = "noterepo \(NoteRepoVersion.current)\n"
         return output
       }
       guard let name, name != "help", !args.contains("-h") else {
         output.stdout = "\(help)\n"
+        return output
+      }
+      if name == "capabilities" {
+        let parsed = try parseOptions(rest, options(common, ["json": .boolean]))
+        if parsed.has("help") {
+          output.stdout = "\(help)\n"
+          return output
+        }
+        output.stdout = try Manifest.render(json: parsed.has("json")) + "\n"
         return output
       }
       guard let command = commands[name] else { throw usage("\"\(name)\" isn't a command") }

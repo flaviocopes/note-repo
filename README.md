@@ -265,6 +265,8 @@ noterepo show --data-dir /tmp/noterepo-demo
 
 Run `noterepo help` for every command and option.
 
+Agents can ask what the CLI can do without touching your notes: `noterepo capabilities` prints a short summary and task list, and `noterepo capabilities --json` prints the same manifest that tools like `clitools` collect.
+
 ## Build it from source
 
 You need macOS 14 or later and Xcode 16 or later, or its command line tools.

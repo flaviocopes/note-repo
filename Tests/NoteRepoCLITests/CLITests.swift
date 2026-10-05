@@ -179,10 +179,28 @@ func content(_ day: JSON) -> String? { day["content"]?.string }
 
 @Test func printsHelpAndTheVersion() async throws {
   let book = try Notebook()
-  #expect(await book.run(["--version"]).text == "\(NoteRepoVersion.current)\n")
+  #expect(await book.run(["--version"]).text == "noterepo \(NoteRepoVersion.current)\n")
   let help = await book.run(["help"])
   #expect(help.text.hasPrefix("noterepo \(NoteRepoVersion.current), the NoteRepo companion CLI for agents\n"))
   #expect(help.text.contains(#"{"2026-09-28": "- Plan\n  1. Write"}"#))
+  #expect(help.text.contains("capabilities"))
+}
+
+@Test func capabilitiesManifestEncodesForAgents() async throws {
+  let book = try Notebook()
+  let json = await book.run(["capabilities", "--json"])
+  #expect(json.error == nil)
+  let parsed = try #require(json.output)
+  #expect(parsed["name"]?.string == "noterepo")
+  #expect(parsed["version"]?.string == NoteRepoVersion.current)
+  #expect(parsed["summary"]?.string?.isEmpty == false)
+  #expect(parsed["capabilities"]!.array.count >= 4)
+  #expect(parsed["changelog"]!.array.isEmpty == false)
+
+  let text = await book.run(["capabilities"])
+  #expect(text.error == nil)
+  #expect(text.text.hasPrefix("noterepo \(NoteRepoVersion.current)\n"))
+  #expect(text.text.contains("What it can do:"))
 }
 
 @Test func writesJSONLikeJavaScript() throws {

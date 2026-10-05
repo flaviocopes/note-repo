@@ -17,7 +17,7 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
   - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus.
   - `SelfTest.swift` and `Automation.swift`: the `--self-test`, `--round-trip` and `--automation` switches.
   - `AppUpdater.swift`: checks the GitHub releases once a day and installs updates. It's an identical copy of the template in the `mac-app-updater` skill, so change the template and copy it over instead of editing it here.
-- `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. `Sources/noterepo/main.swift` runs it.
+- `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. The agent-ready manifest lives in `Manifest.swift`; add a changelog entry there on every version bump. `Sources/noterepo/main.swift` runs it.
 - `Tests/`: unit tests for the model, link titles and every CLI command.
 - `resources/`: `Info.plist` and the icon. `scripts/build.sh` builds the app, `scripts/notarize.sh` makes the notarized release zip, and `scripts/send.swift` talks to `--automation`.
 
