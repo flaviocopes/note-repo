@@ -78,6 +78,29 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   private var hoveredMarker: Int?
   private var markerTracking: NSTrackingArea?
 
+  private static let starCursor: NSCursor = {
+    let pixels = 32
+    let rep = NSBitmapImageRep(
+      bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8, samplesPerPixel: 4,
+      hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    rep.size = NSSize(width: 16, height: 16)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    let outline = NSImage.SymbolConfiguration(pointSize: 26, weight: .black)
+      .applying(.init(paletteColors: [NSColor.black.withAlphaComponent(0.55)]))
+    let fill = NSImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+      .applying(.init(paletteColors: [Theme.star]))
+    NSImage(systemSymbolName: "star.fill", accessibilityDescription: nil)?.withSymbolConfiguration(outline)?
+      .draw(in: NSRect(x: 1, y: 1, width: 30, height: 30))
+    NSImage(systemSymbolName: "star.fill", accessibilityDescription: nil)?.withSymbolConfiguration(fill)?
+      .draw(in: NSRect(x: 4, y: 4, width: 24, height: 24))
+    NSGraphicsContext.restoreGraphicsState()
+    let image = NSImage(size: NSSize(width: 16, height: 16))
+    image.addRepresentation(rep)
+    image.isTemplate = false
+    return NSCursor(image: image, hotSpot: NSPoint(x: 8, y: 8))
+  }()
+
   static func make() -> NoteTextView {
     let storage = NSTextStorage()
     let layout = NoteLayoutManager()
@@ -330,11 +353,23 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     addTrackingArea(area)
   }
 
+  override func cursorUpdate(with event: NSEvent) {
+    if markerIndex(at: convert(event.locationInWindow, from: nil)) != nil {
+      Self.starCursor.set()
+      return
+    }
+    super.cursorUpdate(with: event)
+  }
+
   override func mouseMoved(with event: NSEvent) {
     let index = markerIndex(at: convert(event.locationInWindow, from: nil))
     if index != hoveredMarker {
       hoveredMarker = index
       needsDisplay = true
+    }
+    if index != nil {
+      Self.starCursor.set()
+      return
     }
     super.mouseMoved(with: event)
   }
@@ -365,14 +400,14 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { rect, _, _, range, _ in
         let character = layoutManager.characterIndexForGlyph(at: range.location)
         guard let index = self.paragraphStarts[character], index < self.paragraphs.count else { return }
-        self.addCursorRect(self.markerRect(self.paragraphs[index], line: rect, origin: origin), cursor: .pointingHand)
+        self.addCursorRect(self.markerRect(self.paragraphs[index], line: rect, origin: origin), cursor: Self.starCursor)
       }
     }
     if layoutManager.extraLineFragmentTextContainer === textContainer,
       let index = paragraphStarts[storage.length], index < paragraphs.count, paragraphs[index].range.length == 0
     {
       addCursorRect(
-        markerRect(paragraphs[index], line: layoutManager.extraLineFragmentRect, origin: origin), cursor: .pointingHand)
+        markerRect(paragraphs[index], line: layoutManager.extraLineFragmentRect, origin: origin), cursor: Self.starCursor)
     }
   }
 
