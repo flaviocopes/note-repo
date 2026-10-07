@@ -84,9 +84,12 @@ final class DayView: NSView, NoteTextViewOwner {
 
   func itemOffset(_ n: Int) -> CGFloat? {
     guard let layout = textView.layoutManager, let container = textView.textContainer else { return nil }
+    layoutSubtreeIfNeeded()
     layout.ensureLayout(for: container)
     var seen = 0
     for paragraph in textView.paragraphs where paragraph.range.length > 0 {
+      let text = NoteFormat.inlineMarkdown(textView.textStorage!, paragraph.range)
+      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
       seen += 1
       guard seen == n else { continue }
       let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)

@@ -37,6 +37,27 @@ enum SelfTest {
     }
   }
 
+  static func clickMarker(_ view: NoteTextView, at index: Int) {
+    guard let layout = view.layoutManager, let container = view.textContainer else { return }
+    layout.ensureLayout(for: container)
+    let paragraph = view.paragraphs[index]
+    let line: NSRect
+    if paragraph.range.location == view.textStorage!.length {
+      line = layout.extraLineFragmentRect
+    } else {
+      let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)
+      line = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+    }
+    let point = NSPoint(
+      x: view.textContainerOrigin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + 7,
+      y: view.textContainerOrigin.y + line.minY + NoteFormat.lineHeight / 2)
+    guard let event = NSEvent.mouseEvent(
+      with: .leftMouseDown, location: view.convert(point, to: nil), modifierFlags: [],
+      timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: view.window?.windowNumber ?? 0,
+      context: nil, eventNumber: 0, clickCount: 1, pressure: 1) else { return }
+    view.mouseDown(with: event)
+  }
+
   static func type(_ view: NoteTextView, _ text: String) {
     for character in text {
       view.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -154,7 +175,12 @@ enum SelfTest {
       reloaded.markdown)
 
     let groceries = view.paragraphs.count - 1
-    view.toggleStar(at: groceries)
+    let markdownBeforeStar = view.markdown
+    view.window?.makeFirstResponder(nil)
+    let selectionBeforeStar = view.selectedRange()
+    clickMarker(view, at: groceries)
+    check("clicking a star focuses its editor", view.window?.firstResponder === view)
+    check("starring keeps the text selection", view.selectedRange() == selectionBeforeStar)
     check(
       "clicking the bullet stars the item",
       view.paragraphs[groceries].style.starred && view.markdown.hasSuffix("- ★ Groceries<br>milk, eggs"),
@@ -173,6 +199,12 @@ enum SelfTest {
       model.starred.map(\.text).joined(separator: ", "))
     await undo(view)
     check("undo removes the star", !view.markdown.contains("★") && view.paragraphs[groceries].style.starred == false, view.markdown)
+    check("undoing a star keeps the item text", view.markdown == markdownBeforeStar, view.markdown)
+    clickMarker(view, at: groceries)
+    clickMarker(view, at: groceries)
+    check("clicking again removes the star", view.markdown == markdownBeforeStar, view.markdown)
+    today.save()
+    check("unstarred items leave the sidebar", !model.starred.contains { $0.text.hasPrefix("Groceries") })
     view.insertNewline(nil)
 
     paste(view, "https://flaviocopes.com")
@@ -268,8 +300,30 @@ enum SelfTest {
     await wait(0.4)
     check("a noterepo://today link opens today", model.activeDate == Day.today, model.activeDate)
 
-    view.selectAll(nil)
-    check("copy writes Markdown", view.selectionMarkdown() == view.markdown, view.selectionMarkdown())
+    let starDate = Day.adding(-30, to: Day.today)
+    try! outside.save(starDate, "- Before\n- \t\n" + (1...60).map { "- Row \($0)" }.joined(separator: "\n") + "\n- ★ Target")
+    model.reloadStarred()
+    if let target = model.starred.first(where: { $0.date == starDate }) {
+      model.openStarred(target)
+      await wait(0.5)
+      if let day = model.feed.days.first(where: { $0.date == starDate }),
+        let paragraph = day.textView.paragraphs.last, let layout = day.textView.layoutManager {
+        let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)
+        let line = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        let point = day.textView.convert(
+          NSPoint(x: 0, y: day.textView.textContainerOrigin.y + line.minY), to: model.feed.document)
+        check("the sidebar reveals the starred item in a newly loaded day",
+          abs(point.y - model.feed.scrollView.contentView.bounds.minY - 40) < 2, "\(point)")
+        clickMarker(day.textView, at: day.textView.paragraphs.count - 1)
+        check("starring another day focuses that editor", day.window?.firstResponder === day.textView)
+        await undo(day.textView)
+        check("undo restores the star on that day", day.textView.paragraphs.last?.style.starred == true)
+      } else { check("the starred day is loaded", false) }
+    } else { check("the sidebar contains the historical star", false) }
+    model.feed.jump(to: Day.today, focus: true, animated: false)
+    let currentView = model.feed.days.last!.textView
+    currentView.selectAll(nil)
+    check("copy writes Markdown", currentView.selectionMarkdown() == currentView.markdown, currentView.selectionMarkdown())
 
     let appMenu = NSApp.mainMenu?.items.first?.submenu?.items.map(\.title) ?? []
     check("the app menu has Check for Updates…", appMenu.contains("Check for Updates…"), "\(appMenu)")
