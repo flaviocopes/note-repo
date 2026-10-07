@@ -75,6 +75,8 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   var trailingStyle: ListStyle?
   private(set) var paragraphs: [Paragraph] = []
   private var paragraphStarts: [Int: Int] = [:]
+  private var hoveredMarker: Int?
+  private var markerTracking: NSTrackingArea?
 
   static func make() -> NoteTextView {
     let storage = NSTextStorage()
@@ -188,7 +190,9 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     storage.endEditing()
     paragraphs = result
     paragraphStarts = starts
+    if let hoveredMarker, !paragraphs.indices.contains(hoveredMarker) { self.hoveredMarker = nil }
     needsDisplay = true
+    window?.invalidateCursorRects(for: self)
   }
 
   private func apply(_ style: ListStyle, to range: NSRange, in storage: NSTextStorage) {
@@ -233,18 +237,14 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     guard let layoutManager, let textContainer, let storage = textStorage else { return }
     let origin = textContainerOrigin
     let selection = selectedRange()
-    let drawMarker = { (paragraph: Paragraph, line: NSRect) in
+    let drawMarker = { (index: Int, paragraph: Paragraph, line: NSRect) in
       let selected = paragraph.attachment is ImageAttachment && selection.length > 0
         && NSLocationInRange(paragraph.range.location, selection)
-      let marker: String
-      if paragraph.style.ordered {
-        marker = "\(paragraph.number). "
-      } else {
-        marker = ["• ", "◦ ", "▪ "][min(paragraph.style.depth, 2)]
-      }
-      let text = NSAttributedString(
-        string: marker,
-        attributes: [.font: NoteFormat.font, .foregroundColor: selected ? Theme.accent : Theme.faint])
+      let showStar = paragraph.style.starred || self.hoveredMarker == index
+      let marker = showStar ? "★ " : self.markerLabel(paragraph)
+      let color: NSColor =
+        paragraph.style.starred ? Theme.accent : (showStar ? Theme.muted : (selected ? Theme.accent : Theme.faint))
+      let text = NSAttributedString(string: marker, attributes: [.font: NoteFormat.font, .foregroundColor: color])
       let right = origin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + NoteFormat.listPadding
       let y = origin.y + line.minY + (NoteFormat.lineHeight - NoteFormat.textHeight) / 2
       text.draw(at: NSPoint(x: right - text.size().width, y: y))
@@ -257,14 +257,102 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { rect, _, _, range, _ in
         let character = layoutManager.characterIndexForGlyph(at: range.location)
         if let index = self.paragraphStarts[character], index < self.paragraphs.count {
-          drawMarker(self.paragraphs[index], rect)
+          drawMarker(index, self.paragraphs[index], rect)
         }
       }
     }
     if layoutManager.extraLineFragmentTextContainer === textContainer,
       let index = paragraphStarts[storage.length], index < paragraphs.count, paragraphs[index].range.length == 0
     {
-      drawMarker(paragraphs[index], layoutManager.extraLineFragmentRect)
+      drawMarker(index, paragraphs[index], layoutManager.extraLineFragmentRect)
+    }
+  }
+
+  private func markerLabel(_ paragraph: Paragraph) -> String {
+    if paragraph.style.ordered { return "\(paragraph.number). " }
+    return ["• ", "◦ ", "▪ "][min(paragraph.style.depth, 2)]
+  }
+
+  private func markerRect(_ paragraph: Paragraph, line: NSRect, origin: NSPoint) -> NSRect {
+    let width = (markerLabel(paragraph) as NSString).size(withAttributes: [.font: NoteFormat.font]).width
+    let right = origin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + NoteFormat.listPadding
+    return NSRect(x: right - width - 6, y: origin.y + line.minY, width: width + 6, height: line.height)
+  }
+
+  private func markerIndex(at point: NSPoint) -> Int? {
+    guard let layoutManager, let textContainer, let storage = textStorage else { return nil }
+    layoutManager.ensureLayout(for: textContainer)
+    let origin = textContainerOrigin
+    var found: Int?
+    let glyphs = layoutManager.glyphRange(for: textContainer)
+    if glyphs.length > 0 {
+      layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { rect, _, _, range, _ in
+        let character = layoutManager.characterIndexForGlyph(at: range.location)
+        guard let index = self.paragraphStarts[character], index < self.paragraphs.count else { return }
+        if self.markerRect(self.paragraphs[index], line: rect, origin: origin).contains(point) { found = index }
+      }
+    }
+    if found == nil, layoutManager.extraLineFragmentTextContainer === textContainer,
+      let index = paragraphStarts[storage.length], index < paragraphs.count, paragraphs[index].range.length == 0,
+      markerRect(paragraphs[index], line: layoutManager.extraLineFragmentRect, origin: origin).contains(point)
+    {
+      found = index
+    }
+    return found
+  }
+
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    if let markerTracking { removeTrackingArea(markerTracking) }
+    let area = NSTrackingArea(
+      rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self)
+    markerTracking = area
+    addTrackingArea(area)
+  }
+
+  override func mouseMoved(with event: NSEvent) {
+    let index = markerIndex(at: convert(event.locationInWindow, from: nil))
+    if index != hoveredMarker {
+      hoveredMarker = index
+      needsDisplay = true
+    }
+    super.mouseMoved(with: event)
+  }
+
+  override func mouseExited(with event: NSEvent) {
+    if hoveredMarker != nil {
+      hoveredMarker = nil
+      needsDisplay = true
+    }
+    super.mouseExited(with: event)
+  }
+
+  override func mouseDown(with event: NSEvent) {
+    if let index = markerIndex(at: convert(event.locationInWindow, from: nil)) {
+      toggleStar(at: index)
+      return
+    }
+    super.mouseDown(with: event)
+  }
+
+  override func resetCursorRects() {
+    super.resetCursorRects()
+    guard let layoutManager, let textContainer, let storage = textStorage else { return }
+    layoutManager.ensureLayout(for: textContainer)
+    let origin = textContainerOrigin
+    let glyphs = layoutManager.glyphRange(for: textContainer)
+    if glyphs.length > 0 {
+      layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { rect, _, _, range, _ in
+        let character = layoutManager.characterIndexForGlyph(at: range.location)
+        guard let index = self.paragraphStarts[character], index < self.paragraphs.count else { return }
+        self.addCursorRect(self.markerRect(self.paragraphs[index], line: rect, origin: origin), cursor: .pointingHand)
+      }
+    }
+    if layoutManager.extraLineFragmentTextContainer === textContainer,
+      let index = paragraphStarts[storage.length], index < paragraphs.count, paragraphs[index].range.length == 0
+    {
+      addCursorRect(
+        markerRect(paragraphs[index], line: layoutManager.extraLineFragmentRect, origin: origin), cursor: .pointingHand)
     }
   }
 
@@ -349,6 +437,11 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     didChangeText()
   }
 
+  func toggleStar(at index: Int) {
+    guard paragraphs.indices.contains(index) else { return }
+    setStyle(index) { $0.starred.toggle() }
+  }
+
   private func setStyle(_ index: Int, _ change: (inout ListStyle) -> Void) {
     var style = paragraphs[index].style
     change(&style)
@@ -395,11 +488,12 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       if paragraph.style.depth > 0 { return indent(by: -1) }
       if paragraph.style.ordered { return setStyle(index) { $0.ordered = false } }
     }
-    let attributes = NoteFormat.attributes(paragraph.style)
+    var next = paragraph.style
+    next.starred = false
     if index == paragraphs.count - 1 && NSMaxRange(selection) >= NSMaxRange(paragraph.range) {
-      trailingStyle = paragraph.style
+      trailingStyle = next
     }
-    replace(selection, with: NSAttributedString(string: "\n", attributes: attributes))
+    replace(selection, with: NSAttributedString(string: "\n", attributes: NoteFormat.attributes(next)))
   }
 
   override func insertText(_ string: Any, replacementRange: NSRange) {
@@ -717,11 +811,13 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     let text = NSMutableAttributedString()
     var previous = base
     for (offset, entry) in entries.enumerated() {
-      let style =
+      let split = Outline.splitStar(entry.body)
+      var style =
         offset == 0
         ? base : ListStyle(depth: base.depth + entry.depth - minimum, ordered: entry.ordered, start: entry.start)
+      style.starred = split.starred || (offset == 0 && base.starred)
       if offset > 0 { text.append(NSAttributedString(string: "\n", attributes: NoteFormat.attributes(previous))) }
-      text.append(NoteFormat.body(entry.body, attributes: NoteFormat.attributes(style), store: owner.store))
+      text.append(NoteFormat.body(split.text, attributes: NoteFormat.attributes(style), store: owner.store))
       previous = style
     }
     replace(selectedRange(), with: text)

@@ -5,6 +5,7 @@ extension NSAttributedString.Key {
   static let noteDepth = NSAttributedString.Key("NoteRepoDepth")
   static let noteOrdered = NSAttributedString.Key("NoteRepoOrdered")
   static let noteStart = NSAttributedString.Key("NoteRepoStart")
+  static let noteStarred = NSAttributedString.Key("NoteRepoStarred")
   static let noteLinkToken = NSAttributedString.Key("NoteRepoLinkToken")
 }
 
@@ -16,6 +17,7 @@ struct ListStyle: Equatable {
   var depth = 0
   var ordered = false
   var start = 1
+  var starred = false
 }
 
 enum NoteFormat {
@@ -43,7 +45,7 @@ enum NoteFormat {
   static func listAttributes(_ list: ListStyle) -> [NSAttributedString.Key: Any] {
     [
       .paragraphStyle: paragraphStyle(list.depth), .noteDepth: list.depth, .noteOrdered: list.ordered,
-      .noteStart: list.start,
+      .noteStart: list.start, .noteStarred: list.starred,
     ]
   }
 
@@ -54,7 +56,7 @@ enum NoteFormat {
   static func listStyle(_ attributes: [NSAttributedString.Key: Any]) -> ListStyle {
     ListStyle(
       depth: attributes[.noteDepth] as? Int ?? 0, ordered: attributes[.noteOrdered] as? Bool ?? false,
-      start: attributes[.noteStart] as? Int ?? 1)
+      start: attributes[.noteStart] as? Int ?? 1, starred: attributes[.noteStarred] as? Bool ?? false)
   }
 
   static func paragraphRanges(_ string: String) -> [NSRange] {
@@ -85,7 +87,8 @@ enum NoteFormat {
     for (index, entry) in entries.enumerated() {
       if runStarts.count > entry.depth + 1 { runStarts.removeLast(runStarts.count - entry.depth - 1) }
       while runStarts.count < entry.depth + 1 { runStarts.append(nil) }
-      var list = ListStyle(depth: entry.depth, ordered: entry.ordered, start: 1)
+      let split = Outline.splitStar(entry.body)
+      var list = ListStyle(depth: entry.depth, ordered: entry.ordered, start: 1, starred: split.starred)
       if entry.ordered {
         list.start = runStarts[entry.depth] ?? entry.start
         runStarts[entry.depth] = list.start
@@ -93,10 +96,10 @@ enum NoteFormat {
         runStarts[entry.depth] = nil
       }
       let attributes = attributes(list)
-      result.append(body(entry.body, attributes: attributes, store: store))
+      result.append(body(split.text, attributes: attributes, store: store))
       if index < entries.count - 1 {
         result.append(NSAttributedString(string: "\n", attributes: attributes))
-      } else if entry.body.isEmpty {
+      } else if split.text.isEmpty {
         trailing = list
       }
     }
@@ -165,7 +168,8 @@ enum NoteFormat {
       let bodyRange = range == nil ? paragraph : NSIntersectionRange(paragraph, limit)
       entries.append(
         OutlineEntry(
-          depth: style.depth, ordered: style.ordered, start: style.start, body: inlineMarkdown(text, bodyRange)))
+          depth: style.depth, ordered: style.ordered, start: style.start,
+          body: Outline.withStar(inlineMarkdown(text, bodyRange), starred: style.starred)))
     }
     return entries
   }

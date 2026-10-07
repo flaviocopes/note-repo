@@ -36,6 +36,19 @@ final class Notebook {
 
 func content(_ day: JSON) -> String? { day["content"]?.string }
 
+@Test func keepsAStarWhenTheItemIsEdited() async throws {
+  let book = try Notebook()
+  let day = try await book.ok("write", "2026-09-20", "--raw", "--content", "- ★ Buy milk\n- Bread")
+  #expect(day["items"]![0]!["starred"] == .bool(true))
+  #expect(day["items"]![0]!["text"]?.string == "Buy milk")
+  #expect(day["items"]![1]!["starred"] == nil)
+  #expect(content(day) == "- ★ Buy milk\n- Bread")
+  let edited = try await book.ok("edit", "1", "Buy oat milk", "--date", "2026-09-20")
+  #expect(edited["items"]![0]!["starred"] == .bool(true))
+  #expect(edited["items"]![0]!["text"]?.string == "Buy oat milk")
+  #expect(content(edited) == "- ★ Buy oat milk\n- Bread")
+}
+
 @Test func addsEditsMovesAndRemovesItemsLikeAPersonWould() async throws {
   let book = try Notebook()
   _ = try await book.ok("add", "Plan for the week", "--date", "2026-09-28")

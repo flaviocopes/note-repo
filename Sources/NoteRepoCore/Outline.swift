@@ -34,6 +34,7 @@ public struct OutlineItem {
   public let ordered: Bool
   public let number: Int?
   public let text: String
+  public let starred: Bool
   public let kind: Kind
 }
 
@@ -99,6 +100,18 @@ public enum Outline {
     return entries.count == 1 && entries[0].raw.isEmpty ? [] : entries
   }
 
+  /// A star is `★` at the start of the line's text, with a space when the item has more text.
+  public static func splitStar(_ body: String) -> (starred: Bool, text: String) {
+    if body == "★" { return (true, "") }
+    if body.hasPrefix("★ ") { return (true, String(body.dropFirst(2))) }
+    return (false, body)
+  }
+
+  public static func withStar(_ text: String, starred: Bool) -> String {
+    guard starred else { return text }
+    return text.isEmpty ? "★" : "★ \(text)"
+  }
+
   public static func format(_ entry: OutlineEntry) -> String {
     let indent = String(repeating: "  ", count: entry.depth)
     let marker = entry.ordered ? "\(entry.start)." : "-"
@@ -155,7 +168,8 @@ public enum Outline {
   public static func describe(_ entries: [OutlineEntry]) -> [OutlineItem] {
     var n = 0
     return renumber(entries).compactMap { entry in
-      let text = trim(entry.body)
+      let split = splitStar(trim(entry.body))
+      let text = split.text
       guard !text.isEmpty else { return nil }
       n += 1
       let kind: OutlineItem.Kind
@@ -167,7 +181,7 @@ public enum Outline {
       }
       return OutlineItem(
         n: n, level: entry.depth, ordered: entry.ordered, number: entry.ordered ? entry.start : nil, text: text,
-        kind: kind)
+        starred: split.starred, kind: kind)
     }
   }
 

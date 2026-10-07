@@ -41,6 +41,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Continuous scrolling back through the days that have notes
 - Bulleted and numbered lists started with `-` or `1.`
 - Nested list items with `Tab` and `Shift+Tab`
+- Star an item by hovering its bullet and clicking
 - Several lines in one item with `⌥Return`
 - Automatic saving
 - Fast text search
@@ -119,7 +120,7 @@ noterepo show
 }
 ```
 
-Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link` or `image`. `content` is the day as NoteRepo stores it.
+Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link` or `image`. A starred item also has `"starred": true`. The day stores that star as `★` at the start of the line. `content` is the day as NoteRepo stores it.
 
 For another day, pass a date as `YYYY-MM-DD`, `today` or `yesterday`:
 

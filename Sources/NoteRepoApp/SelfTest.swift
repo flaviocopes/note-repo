@@ -152,6 +152,22 @@ enum SelfTest {
       "a line break inside an item survives a reload",
       reloaded.markdown == view.markdown && reloaded.textStorage!.string.hasSuffix("Groceries\u{2028}milk, eggs"),
       reloaded.markdown)
+
+    let groceries = view.paragraphs.count - 1
+    view.toggleStar(at: groceries)
+    check(
+      "clicking the bullet stars the item",
+      view.paragraphs[groceries].style.starred && view.markdown.hasSuffix("- ★ Groceries<br>milk, eggs"),
+      view.markdown)
+    check("the star stays in the margin", !view.textStorage!.string.contains("★"))
+    let starred = NoteTextView.make()
+    starred.load(view.markdown)
+    check(
+      "a star survives a reload",
+      starred.paragraphs[groceries].style.starred && !starred.textStorage!.string.contains("★"),
+      starred.markdown)
+    await undo(view)
+    check("undo removes the star", !view.markdown.contains("★") && view.paragraphs[groceries].style.starred == false, view.markdown)
     view.insertNewline(nil)
 
     paste(view, "https://flaviocopes.com")

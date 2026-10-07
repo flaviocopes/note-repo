@@ -24,6 +24,24 @@ import Testing
   #expect(Outline.format(OutlineEntry(depth: 0, ordered: true, start: 3, body: "Three  ")) == "3. Three")
 }
 
+@Test func keepsAStarOnTheItem() {
+  let image = String(repeating: "a", count: 64)
+  let items = Outline.describe(
+    Outline.parse("- ★ Buy milk\n- Bread\n- ★ ![Shot](noterepo:image:\(image))"))
+  #expect(items[0].starred && items[0].text == "Buy milk")
+  #expect(!items[1].starred && items[1].text == "Bread")
+  #expect(items[2].starred && items[2].text == "![Shot](noterepo:image:\(image))")
+  guard case .image(let id, let alt) = items[2].kind else {
+    Issue.record("a starred image is still an image")
+    return
+  }
+  #expect(id == image && alt == "Shot")
+  #expect(Outline.normalized(Outline.parse("- ★ Buy milk")) == "- ★ Buy milk")
+  #expect(Outline.withStar("", starred: true) == "★")
+  #expect(Outline.splitStar("★") == (starred: true, text: ""))
+  #expect(Outline.splitStar("Buy milk") == (starred: false, text: "Buy milk"))
+}
+
 @Test func detectsNoteContent() {
   #expect(!Outline.hasContent(" \n\t "))
   #expect(!Outline.hasContent("- "))

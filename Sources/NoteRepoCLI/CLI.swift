@@ -52,9 +52,10 @@ public enum CLI {
 
     A day is a list of items. Each item has a number (n), a level (0 for top
     level, 1 for nested under the item before it, and so on), a list type
-    (bullet or numbered) and its text. A line break inside an item is <br> in
-    its text. Commands that take N use the n shown by "show". Removing or
-    moving an item takes its nested items with it.
+    (bullet or numbered) and its text. A starred item has "starred": true. The
+    star is stored as ★ at the start of the line. A line break inside an item
+    is <br> in its text. Commands that take N use the n shown by "show".
+    Removing or moving an item takes its nested items with it.
 
     DATE is YYYY-MM-DD, "today" or "yesterday". NoteRepo has no future days, so
     commands that write only accept today and earlier days.
@@ -217,6 +218,7 @@ public enum CLI {
     return JSON.object([
       "n": .int(item.n), "level": .int(item.level), "list": .string(item.ordered ? "numbered" : "bullet"),
       "number": item.number.map(JSON.int), "kind": .string(kind), "text": .string(item.text),
+      "starred": item.starred ? .bool(true) : nil,
     ]).merging(extra)
   }
 
@@ -564,7 +566,9 @@ public enum CLI {
         let entries = Outline.parse(try store.get(date).content)
         let index = try findItem(entries, n)
         let entry = entries[index]
-        if let text { entry.body = text.body }
+        if let text {
+          entry.body = Outline.withStar(text.body, starred: Outline.splitStar(entry.body).starred)
+        }
         if options.numbered || options.bullet {
           entry.ordered = options.numbered
           entry.start = 1

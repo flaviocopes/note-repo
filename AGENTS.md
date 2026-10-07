@@ -10,7 +10,7 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
   - `Links.swift`: inline links and images in a line, and page titles, with Reddit, YouTube and X handling. An X post keeps the first line of its text.
   - `Dates.swift`, `Images.swift` (image type checks), and `Version.swift`, the one place the version lives.
 - `Sources/NoteRepoApp/`: the app.
-  - `NoteTextView.swift`: the editor, an `NSTextView`. It handles bullets, Tab nesting, paste and drop, and copy as Markdown.
+  - `NoteTextView.swift`: the editor, an `NSTextView`. It handles bullets, Tab nesting, paste and drop, and copy as Markdown. Hover a bullet and click to star the item. The star is saved as ★ at the start of the line.
   - `NoteFormat.swift`: turns Markdown into the editor's text and back. A line break inside an item (⌥Return) is a U+2028 line separator in the editor and `<br>` in the saved text, so every item stays on one line.
   - `Feed.swift`: the scrolling list of days, saving, and reloading days changed outside the app.
   - `Attachments.swift`: images inside a day's text.
