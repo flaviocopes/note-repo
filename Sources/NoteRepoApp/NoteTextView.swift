@@ -109,7 +109,8 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     isAutomaticLinkDetectionEnabled = false
     isAutomaticDataDetectionEnabled = false
     isAutomaticTextCompletionEnabled = false
-    isContinuousSpellCheckingEnabled = true
+    isContinuousSpellCheckingEnabled = false
+    isGrammarCheckingEnabled = false
     smartInsertDeleteEnabled = false
     isVerticallyResizable = false
     isHorizontallyResizable = false

@@ -122,6 +122,9 @@ enum SelfTest {
       exit(1)
     }
     let view = today.textView
+    check("spell checking and correction stay off",
+      !view.isContinuousSpellCheckingEnabled && !view.isGrammarCheckingEnabled
+        && !view.isAutomaticSpellingCorrectionEnabled)
     today.focusEnd()
     view.selectAll(nil)
     view.deleteBackward(nil)
