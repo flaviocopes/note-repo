@@ -193,10 +193,8 @@ enum SelfTest {
       starred.paragraphs[groceries].style.starred && !starred.textStorage!.string.contains("★"),
       starred.markdown)
     today.save()
-    check(
-      "starred items show in the sidebar",
-      model.starred.contains { $0.text.hasPrefix("Groceries") },
-      model.starred.map(\.text).joined(separator: ", "))
+    check("stars are saved with their items",
+      Outline.describe(Outline.parse(try! model.store.get(Day.today).content)).contains { $0.starred && $0.text.hasPrefix("Groceries") })
     await undo(view)
     check("undo removes the star", !view.markdown.contains("★") && view.paragraphs[groceries].style.starred == false, view.markdown)
     check("undoing a star keeps the item text", view.markdown == markdownBeforeStar, view.markdown)
@@ -204,7 +202,7 @@ enum SelfTest {
     clickMarker(view, at: groceries)
     check("clicking again removes the star", view.markdown == markdownBeforeStar, view.markdown)
     today.save()
-    check("unstarred items leave the sidebar", !model.starred.contains { $0.text.hasPrefix("Groceries") })
+    check("unstarring is saved", !Outline.describe(Outline.parse(try! model.store.get(Day.today).content)).contains(where: \.starred))
     view.insertNewline(nil)
 
     paste(view, "https://flaviocopes.com")
@@ -301,26 +299,36 @@ enum SelfTest {
     check("a noterepo://today link opens today", model.activeDate == Day.today, model.activeDate)
 
     let starDate = Day.adding(-30, to: Day.today)
-    try! outside.save(starDate, "- Before\n- \t\n" + (1...60).map { "- Row \($0)" }.joined(separator: "\n") + "\n- ★ Target")
-    model.reloadStarred()
-    if let target = model.starred.first(where: { $0.date == starDate }) {
-      model.openStarred(target)
-      await wait(0.5)
-      if let day = model.feed.days.first(where: { $0.date == starDate }),
-        let paragraph = day.textView.paragraphs.last, let layout = day.textView.layoutManager {
-        let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)
-        let line = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
-        let point = day.textView.convert(
-          NSPoint(x: 0, y: day.textView.textContainerOrigin.y + line.minY), to: model.feed.document)
-        check("the sidebar reveals the starred item in a newly loaded day",
-          abs(point.y - model.feed.scrollView.contentView.bounds.minY - 40) < 2, "\(point)")
-        clickMarker(day.textView, at: day.textView.paragraphs.count - 1)
-        check("starring another day focuses that editor", day.window?.firstResponder === day.textView)
-        await undo(day.textView)
-        check("undo restores the star on that day", day.textView.paragraphs.last?.style.starred == true)
-      } else { check("the starred day is loaded", false) }
-    } else { check("the sidebar contains the historical star", false) }
-    model.feed.jump(to: Day.today, focus: true, animated: false)
+    let fullNote = "- Keep hidden\n  - ★ Nested target\n- Another hidden item\n- ★ [Starred link](https://flaviocopes.com)"
+    try! outside.save(starDate, fullNote)
+    today.focusEnd()
+    view.setSelectedRange(NSRange(location: view.textStorage!.length, length: 0))
+    type(view, " pending edit")
+    let pending = view.markdown
+    model.toggleStarred()
+    check("entering the starred view saves pending edits", try! model.store.get(Day.today).content == pending)
+    check("the starred view includes older days", model.feed.days.contains { $0.date == starDate })
+    check("the starred view hides days without stars", model.feed.days.count == 1)
+    if let day = model.feed.days.first {
+      check("only starred items are shown", day.textView.markdown == "- ★ Nested target\n- ★ [Starred link](https://flaviocopes.com)", day.textView.markdown)
+      check("viewing stars keeps the full note in the database", try! model.store.get(starDate).content == fullNote)
+      check("filtered text cannot overwrite hidden items", !day.textView.isEditable)
+      clickMarker(day.textView, at: 0)
+      check("unstarring in the filtered view keeps hidden items", try! model.store.get(starDate).content == fullNote.replacingOccurrences(of: "★ Nested", with: "Nested"))
+      check("an unstarred item leaves the filtered view", model.feed.days.first?.textView.markdown == "- ★ [Starred link](https://flaviocopes.com)")
+      model.feed.scrollView.window?.undoManager?.undo()
+      check("undo restores a star in the filtered view", try! model.store.get(starDate).content == fullNote)
+    }
+    try! outside.save(starDate, "- Keep hidden\n- ★ Updated by the CLI")
+    await wait(1.2)
+    check("outside changes refresh the starred view", model.feed.days.first?.textView.markdown == "- ★ Updated by the CLI")
+    if let day = model.feed.days.first { clickMarker(day.textView, at: 0) }
+    check("removing the last star leaves an empty filtered view", model.showsStarred && model.feed.days.isEmpty)
+    model.toggleStarred()
+    check("clicking View starred again restores the full feed", !model.showsStarred && model.feed.days.contains { $0.date == Day.today })
+    model.toggleStarred()
+    model.focusToday()
+    check("Today exits the starred view", !model.showsStarred && model.activeDate == Day.today)
     let currentView = model.feed.days.last!.textView
     currentView.selectAll(nil)
     check("copy writes Markdown", currentView.selectionMarkdown() == currentView.markdown, currentView.selectionMarkdown())

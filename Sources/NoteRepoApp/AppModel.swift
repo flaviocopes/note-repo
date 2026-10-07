@@ -9,14 +9,6 @@ struct SearchResult: Identifiable {
   let excerpt: String
 }
 
-struct StarredItem: Identifiable {
-  var id: String { "\(date)#\(n)" }
-  let date: String
-  let n: Int
-  let text: String
-  let label: String
-}
-
 @MainActor
 @Observable
 final class AppModel {
@@ -28,14 +20,13 @@ final class AppModel {
   var searchOpen = false
   var searchFocusRequest = 0
   var saveError: String?
-  var starred: [StarredItem] = []
+  var showsStarred = false
   @ObservationIgnored private var searchTask: Task<Void, Never>?
 
   init(store: NoteStore) {
     self.store = store
     feed = FeedController(store: store)
     feed.model = self
-    reloadStarred()
   }
 
   static func dataURL(arguments: [String] = CommandLine.arguments) -> URL {
@@ -83,40 +74,27 @@ final class AppModel {
     searchOpen = false
   }
 
-  func reloadStarred() {
-    let notes = (try? store.notesContainingStar()) ?? []
-    starred = notes.flatMap { note in
-      Outline.describe(Outline.parse(note.content)).filter(\.starred).map { item in
-        StarredItem(date: note.date, n: item.n, text: starredText(item.text), label: Day.shortTitle(note.date))
-      }
-    }
-  }
-
-  func openStarred(_ item: StarredItem) {
+  func toggleStarred() {
     searchOpen = false
-    feed.jump(to: item.date, focus: false, animated: false)
-    feed.revealItem(item.n, on: item.date)
+    feed.flushSaves()
+    showsStarred.toggle()
+    feed.load(anchor: activeDate)
   }
 
-  private func starredText(_ text: String) -> String {
-    text
-      .replacingOccurrences(of: "<br>", with: " ")
-      .replacingOccurrences(
-        of: #"!\[[^\]]*\]\(noterepo:image:[a-f0-9]{64}\)"#, with: "Image", options: [.regularExpression, .caseInsensitive]
-      )
-      .replacingOccurrences(
-        of: #"\[([^\]]+)\]\((https?://[^\s)]+)\)"#, with: "$1", options: [.regularExpression, .caseInsensitive]
-      )
-      .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-      .trimmingCharacters(in: .whitespacesAndNewlines)
+  private func showAll() {
+    guard showsStarred else { return }
+    showsStarred = false
+    feed.load(anchor: activeDate)
   }
 
   func jump(to date: String) {
+    showAll()
     searchOpen = false
     feed.jump(to: date, focus: false)
   }
 
   func focusToday() {
+    showAll()
     searchOpen = false
     feed.jump(to: Day.today, focus: true)
   }
@@ -128,6 +106,7 @@ final class AppModel {
     let host = url.host?.lowercased()
     let date = host == "today" ? Day.today : url.pathComponents.dropFirst().first ?? ""
     guard host == "today" || (host == "day" && Day.isKey(date)) else { return }
+    showAll()
     openedLink = true
     searchOpen = false
     NSApp.activate(ignoringOtherApps: true)

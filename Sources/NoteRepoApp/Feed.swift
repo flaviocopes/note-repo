@@ -14,6 +14,7 @@ final class DayView: NSView, NoteTextViewOwner {
   let textView = NoteTextView.make()
   unowned let feed: FeedController
   var base: String
+  let starredOnly: Bool
   var lastSaved = ""
   var content = ""
   private var saveTimer: Timer?
@@ -22,6 +23,7 @@ final class DayView: NSView, NoteTextViewOwner {
   var isToday: Bool { date == Day.today }
 
   init(note: Note, feed: FeedController) {
+    starredOnly = feed.model?.showsStarred == true
     date = note.date
     base = note.content
     self.feed = feed
@@ -32,8 +34,10 @@ final class DayView: NSView, NoteTextViewOwner {
     addSubview(header)
     textView.owner = self
     addSubview(textView)
-    textView.load(note.content)
-    content = textView.markdown
+    let shown = starredOnly ? Self.starredContent(note.content) : note.content
+    textView.load(shown)
+    textView.isEditable = !starredOnly
+    content = starredOnly ? note.content : textView.markdown
     lastSaved = content
   }
 
@@ -58,7 +62,7 @@ final class DayView: NSView, NoteTextViewOwner {
     }
     let chrome = DayView.padding.top + headerHeight + DayView.headerGap + DayView.padding.bottom
     let natural = chrome + textView.contentHeight
-    return isToday ? max(natural, viewport) : natural
+    return isToday && !starredOnly ? max(natural, viewport) : natural
   }
 
   override func layout() {
@@ -82,28 +86,27 @@ final class DayView: NSView, NoteTextViewOwner {
     textView.setSelectedRange(NSRange(location: textView.textStorage?.length ?? 0, length: 0))
   }
 
-  func itemOffset(_ n: Int) -> CGFloat? {
-    guard let layout = textView.layoutManager, let container = textView.textContainer else { return nil }
-    layoutSubtreeIfNeeded()
-    layout.ensureLayout(for: container)
-    var seen = 0
-    for paragraph in textView.paragraphs where paragraph.range.length > 0 {
-      let text = NoteFormat.inlineMarkdown(textView.textStorage!, paragraph.range)
-      guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
-      seen += 1
-      guard seen == n else { continue }
-      let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)
-      var rect = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
-      rect.origin.x += textView.textContainerOrigin.x
-      rect.origin.y += textView.textContainerOrigin.y
-      return textView.convert(rect, to: self).minY
-    }
-    return nil
+  static func starredContent(_ content: String) -> String {
+    let entries = Outline.parse(content).filter { Outline.splitStar($0.body).starred }
+    for entry in entries { entry.depth = 0; entry.dirty = true }
+    return Outline.normalized(entries)
+  }
+
+  func toggleStar(at index: Int) -> Bool {
+    guard starredOnly else { return false }
+    let entries = Outline.parse(base)
+    let stars = entries.filter { Outline.splitStar($0.body).starred }
+    guard stars.indices.contains(index) else { return true }
+    stars[index].body = Outline.splitStar(stars[index].body).text
+    stars[index].dirty = true
+    feed.saveStarChange(date: date, content: Outline.serialize(entries), base: base)
+    return true
   }
 
   // MARK: Saving
 
   func textChanged() {
+    guard !starredOnly else { return }
     content = textView.markdown
     feed.saveStateChanged(date: date, error: nil)
     saveTimer?.invalidate()
@@ -118,6 +121,7 @@ final class DayView: NSView, NoteTextViewOwner {
   func textEndedEditing() { save() }
 
   func save() {
+    guard !starredOnly else { return }
     saveTimer?.invalidate()
     saveTimer = nil
     guard content != lastSaved else { return }
@@ -133,7 +137,6 @@ final class DayView: NSView, NoteTextViewOwner {
         base = text
       }
       feed.saveStateChanged(date: date, error: nil)
-      feed.model?.reloadStarred()
     } catch {
       feed.saveStateChanged(date: date, error: "Could not save")
     }
@@ -165,6 +168,7 @@ final class FeedController: NSObject {
   private var dataVersion = 0
   private var versions: [String: String] = [:]
   private var lastSize = NSSize.zero
+  private let emptyLabel = NSTextField(labelWithString: "No starred items")
 
   init(store: NoteStore) {
     self.store = store
@@ -176,6 +180,10 @@ final class FeedController: NSObject {
     scrollView.automaticallyAdjustsContentInsets = false
     scrollView.contentInsets = NSEdgeInsets()
     scrollView.documentView = document
+    emptyLabel.font = Theme.mono(12)
+    emptyLabel.textColor = Theme.muted
+    emptyLabel.isHidden = true
+    document.addSubview(emptyLabel)
     scrollView.contentView.postsBoundsChangedNotifications = true
     scrollView.contentView.postsFrameChangedNotifications = true
     NotificationCenter.default.addObserver(
@@ -210,6 +218,20 @@ final class FeedController: NSObject {
     pendingAnchor = nil
     flushSaves()
     days.forEach { $0.removeFromSuperview() }
+    if model?.showsStarred == true {
+      hasMoreBefore = false
+      hasMoreAfter = false
+      let notes = ((try? store.notesContainingStar()) ?? []).reversed().filter {
+        $0.date <= today && Outline.describe(Outline.parse($0.content)).contains(where: \.starred)
+      }
+      days = notes.map(makeDay)
+      days.forEach(document.addSubview)
+      scrollTarget = nil
+      relayout(keepAnchor: false)
+      setTop(0)
+      updateActive()
+      return
+    }
     let earlier = (try? store.notesBefore(date, limit: 7)) ?? []
     hasMoreBefore = earlier.count == 7
     var notes = earlier
@@ -271,6 +293,8 @@ final class FeedController: NSObject {
       day.needsDisplay = true
       y += dayHeight
     }
+    emptyLabel.isHidden = model?.showsStarred != true || !days.isEmpty
+    emptyLabel.frame = NSRect(x: 40, y: 52, width: max(0, width - 80), height: 24)
     adjusting = true
     document.frame = NSRect(x: 0, y: 0, width: width, height: max(y, height))
     if let target = scrollTarget, days.contains(where: { $0 === target }) {
@@ -344,11 +368,6 @@ final class FeedController: NSObject {
     if model?.activeDate != day.date { model?.activeDate = day.date }
   }
 
-  func revealItem(_ n: Int, on date: String) {
-    guard let day = days.first(where: { $0.date == date }), let offset = day.itemOffset(n) else { return }
-    setTop(day.frame.minY + offset - 40, animated: true)
-  }
-
   func jump(to requested: String, focus: Bool, animated: Bool = true) {
     let date = min(requested, Day.today)
     if let day = days.first(where: { $0.date == date }) {
@@ -380,6 +399,20 @@ final class FeedController: NSObject {
     days.forEach { $0.save() }
   }
 
+  func saveStarChange(date: String, content: String, base: String) {
+    do {
+      let saved = try store.save(date, content, base: base)
+      scrollView.window?.undoManager?.registerUndo(withTarget: self) { feed in
+        feed.saveStarChange(date: date, content: base, base: saved.content)
+      }
+      scrollView.window?.undoManager?.setActionName("Unstar item")
+      saveStateChanged(date: date, error: nil)
+      load(anchor: model?.activeDate ?? Day.today)
+    } catch {
+      saveStateChanged(date: date, error: "Could not save")
+    }
+  }
+
   // MARK: Outside changes
 
   private func checkOutsideChanges() {
@@ -390,7 +423,10 @@ final class FeedController: NSObject {
     versions = next
     let changed = dates.filter { $0 <= Day.today }
     guard !changed.isEmpty else { return }
-    model?.reloadStarred()
+    if model?.showsStarred == true {
+      load(anchor: model?.activeDate ?? Day.today)
+      return
+    }
     if changed.count > 10 {
       load(anchor: model?.activeDate ?? Day.today)
       return

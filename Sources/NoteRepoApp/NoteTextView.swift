@@ -7,6 +7,7 @@ protocol NoteTextViewOwner: AnyObject {
   func textFocused()
   func textLayoutChanged()
   func textEndedEditing()
+  func toggleStar(at index: Int) -> Bool
 }
 
 final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
@@ -233,7 +234,9 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   // MARK: Drawing
 
   override func draw(_ dirtyRect: NSRect) {
+    NSGraphicsContext.saveGraphicsState()
     super.draw(dirtyRect)
+    NSGraphicsContext.restoreGraphicsState()
     guard let layoutManager, let textContainer, let storage = textStorage else { return }
     let origin = textContainerOrigin
     let selection = selectedRange()
@@ -472,6 +475,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
 
   func toggleStar(at index: Int) {
     guard paragraphs.indices.contains(index) else { return }
+    if owner?.toggleStar(at: index) == true { return }
     setStyle(index) { $0.starred.toggle() }
   }
 

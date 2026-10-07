@@ -38,6 +38,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 ## Features
 
 - Today is always ready to write in, starting with a bullet
+- Click a bullet to star an item. View starred, below Today, shows only starred items across your days. Click a star there to remove it, or click Today to return to the full editor.
 - Continuous scrolling back through the days that have notes
 - Bulleted and numbered lists started with `-` or `1.`
 - Nested list items with `Tab` and `Shift+Tab`

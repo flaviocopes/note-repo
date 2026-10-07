@@ -14,7 +14,7 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
   - `NoteFormat.swift`: turns Markdown into the editor's text and back. A line break inside an item (⌥Return) is a U+2028 line separator in the editor and `<br>` in the saved text, so every item stays on one line.
   - `Feed.swift`: the scrolling list of days, saving, and reloading days changed outside the app.
   - `Attachments.swift`: images inside a day's text.
-  - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus. The sidebar lists starred items when there are any.
+  - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus. The sidebar has a View starred toggle below Today. It shows only starred items in the feed, with links and unstar controls; Today returns to the full editor.
   - `SelfTest.swift` and `Automation.swift`: the `--self-test`, `--round-trip` and `--automation` switches.
   - `AppUpdater.swift`: checks the GitHub releases once a day and installs updates. It's an identical copy of the template in the `mac-app-updater` skill, so change the template and copy it over instead of editing it here.
 - `Sources/NoteRepoCLI/`: every `noterepo` command, plus `JSON.swift`, which prints JSON exactly like `JSON.stringify(value, null, 2)`. The agent-ready manifest lives in `Manifest.swift`; add a changelog entry there on every version bump. `Sources/noterepo/main.swift` runs it.
