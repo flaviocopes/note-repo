@@ -15,7 +15,7 @@ NoteRepo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lis
 
 ## Download
 
-Get `NoteRepo-2.3.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
+Get `NoteRepo-2.4.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
 
 Coming from 1.x? Replace the old app with the new one. Your notes stay where they are.
 
@@ -42,7 +42,6 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Continuous scrolling back through the days that have notes
 - Bulleted and numbered lists started with `-` or `1.`
 - Nested list items with `Tab` and `Shift+Tab`
-- Star an item by hovering its bullet and clicking. Starred items show in the sidebar
 - Several lines in one item with `⌥Return`
 - Automatic saving
 - Fast text search
@@ -279,11 +278,7 @@ open build/NoteRepo.app
 
 The script builds `build/NoteRepo.app` for Apple silicon and Intel, with the `noterepo` tool inside. It signs the app with my Developer ID when that certificate is in the keychain, and ad hoc everywhere else, so your copy is signed ad hoc. Drag it to your Applications folder.
 
-A copy you build yourself opens without a warning on your Mac. If you send it to another Mac, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**, or remove the quarantine flag in Terminal:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/NoteRepo.app
-```
+A copy you build yourself opens without a warning on your Mac. If you send it to another Mac, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ## Where your notes live
 

@@ -2,6 +2,13 @@
 
 Every NoteRepo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/noterepo/releases).
 
+## 2.4.0 (October 7, 2026)
+
+- **Star items.** Hover a bullet or number and click to star the item. Click the star again to remove it. Stars stay with their items when you save, reload, or edit them with the CLI.
+- **View starred.** The button below Today shows starred items from every day in the main feed. Links still work, and clicking a star removes it from this view. Click Today to return to the full editor.
+- Spelling and grammar checks are off in the editor.
+- The CLI includes `"starred": true` for starred items in its JSON output.
+
 ## 2.3.0 (October 7, 2026)
 
 - **X posts are links.** Paste a post from X and you get the first line of its text, the same way a blog link shows its title. `noterepo add` does the same. The preview card is gone. A post you saved before stays as its URL until you paste the link again.

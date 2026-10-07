@@ -69,6 +69,13 @@ enum Manifest {
     ],
     changelog: [
       Release(
+        version: "2.4.0", date: "2026-10-07",
+        changes: [
+          "Starred items have starred: true in JSON. Editing an item keeps its star.",
+          "The app can star items and show them across days. Spelling and grammar checks are off.",
+        ]
+      ),
+      Release(
         version: "2.3.0", date: "2026-10-07",
         changes: ["An X post gets the first line of its text. add and title treat it like any other link."]
       ),
