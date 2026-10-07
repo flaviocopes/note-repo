@@ -241,10 +241,14 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       let selected = paragraph.attachment is ImageAttachment && selection.length > 0
         && NSLocationInRange(paragraph.range.location, selection)
       let showStar = paragraph.style.starred || self.hoveredMarker == index
-      let marker = showStar ? "★ " : self.markerLabel(paragraph)
-      let color: NSColor =
-        paragraph.style.starred ? Theme.accent : (showStar ? Theme.muted : (selected ? Theme.accent : Theme.faint))
-      let text = NSAttributedString(string: marker, attributes: [.font: NoteFormat.font, .foregroundColor: color])
+      if showStar {
+        self.drawStar(filled: paragraph.style.starred, depth: paragraph.style.depth, line: line, origin: origin)
+        return
+      }
+      let marker = self.markerLabel(paragraph)
+      let text = NSAttributedString(
+        string: marker,
+        attributes: [.font: NoteFormat.font, .foregroundColor: selected ? Theme.accent : Theme.faint])
       let right = origin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + NoteFormat.listPadding
       let y = origin.y + line.minY + (NoteFormat.lineHeight - NoteFormat.textHeight) / 2
       text.draw(at: NSPoint(x: right - text.size().width, y: y))
@@ -268,15 +272,28 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     }
   }
 
+  private func drawStar(filled: Bool, depth: Int, line: NSRect, origin: NSPoint) {
+    let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+      .applying(.init(paletteColors: [Theme.star]))
+    let name = filled ? "star.fill" : "star"
+    guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
+    else { return }
+    let size = image.size
+    let right = origin.x + NoteFormat.indent * CGFloat(depth) + NoteFormat.listPadding
+    let rect = NSRect(x: right - size.width, y: origin.y + line.midY - size.height / 2, width: size.width, height: size.height)
+    image.draw(in: rect)
+  }
+
   private func markerLabel(_ paragraph: Paragraph) -> String {
     if paragraph.style.ordered { return "\(paragraph.number). " }
     return ["• ", "◦ ", "▪ "][min(paragraph.style.depth, 2)]
   }
 
   private func markerRect(_ paragraph: Paragraph, line: NSRect, origin: NSPoint) -> NSRect {
-    let width = (markerLabel(paragraph) as NSString).size(withAttributes: [.font: NoteFormat.font]).width
+    let labelWidth = (markerLabel(paragraph) as NSString).size(withAttributes: [.font: NoteFormat.font]).width
+    let width = max(labelWidth, 18)
     let right = origin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + NoteFormat.listPadding
-    return NSRect(x: right - width - 6, y: origin.y + line.minY, width: width + 6, height: line.height)
+    return NSRect(x: right - width - 4, y: origin.y + line.minY, width: width + 4, height: line.height)
   }
 
   private func markerIndex(at point: NSPoint) -> Int? {

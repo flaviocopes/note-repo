@@ -24,6 +24,7 @@ enum Theme {
   static let muted = dynamic(rgb(0x141414, 0.5), rgb(0xffffff, 0.45))
   static let faint = dynamic(rgb(0x141414, 0.3), rgb(0xffffff, 0.25))
   static let accent = dynamic(rgb(0x0b63d6), rgb(0x4ea1ff))
+  static let star = dynamic(rgb(0xf0b000), rgb(0xffd24d))
   static let red = dynamic(rgb(0xd1274f), rgb(0xf84d75))
   static let linkUnderline = dynamic(rgb(0x0b63d6, 0.4), rgb(0x4ea1ff, 0.4))
   static let accentGlow = dynamic(rgb(0x0b63d6, 0.35), rgb(0x4ea1ff, 0.35))
