@@ -2,6 +2,10 @@
 
 Every NoteRepo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/noterepo/releases).
 
+## 2.3.0 (October 7, 2026)
+
+- **X posts are links.** Paste a post from X and you get the first line of its text, the same way a blog link shows its title. `noterepo add` does the same. The preview card is gone. A post you saved before stays as its URL until you paste the link again.
+
 ## 2.2.0 (October 3, 2026)
 
 - **Signed and notarized.** NoteRepo is now signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS no longer says it "could not verify NoteRepo is free of malware", so you don't need **Open Anyway** or Terminal. It asks the usual question about opening an app downloaded from the internet, and you click **Open**.

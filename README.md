@@ -15,7 +15,7 @@ NoteRepo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lis
 
 ## Download
 
-Get `NoteRepo-2.2.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
+Get `NoteRepo-2.3.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
 
 Coming from 1.x? Replace the old app with the new one. Your notes stay where they are.
 

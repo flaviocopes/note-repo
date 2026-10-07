@@ -69,6 +69,10 @@ enum Manifest {
     ],
     changelog: [
       Release(
+        version: "2.3.0", date: "2026-10-07",
+        changes: ["An X post gets the first line of its text. add and title treat it like any other link."]
+      ),
+      Release(
         version: "2.2.0", date: "2026-10-03",
         changes: ["Signed and notarized Mac app. The CLI didn't change."]
       ),
