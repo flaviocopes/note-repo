@@ -273,14 +273,18 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   private func drawStar(filled: Bool, depth: Int, line: NSRect, origin: NSPoint) {
-    let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+    let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
       .applying(.init(paletteColors: [Theme.star]))
     let name = filled ? "star.fill" : "star"
     guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config)
     else { return }
     let size = image.size
+    let attributes = [NSAttributedString.Key.font: NoteFormat.font]
+    let dot = ("•" as NSString).size(withAttributes: attributes)
+    let slot = ("• " as NSString).size(withAttributes: attributes)
     let right = origin.x + NoteFormat.indent * CGFloat(depth) + NoteFormat.listPadding
-    let rect = NSRect(x: right - size.width, y: origin.y + line.midY - size.height / 2, width: size.width, height: size.height)
+    let center = NSPoint(x: right - slot.width + dot.width / 2, y: origin.y + line.midY)
+    let rect = NSRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
     image.draw(in: rect)
   }
 
@@ -290,8 +294,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   private func markerRect(_ paragraph: Paragraph, line: NSRect, origin: NSPoint) -> NSRect {
-    let labelWidth = (markerLabel(paragraph) as NSString).size(withAttributes: [.font: NoteFormat.font]).width
-    let width = max(labelWidth, 18)
+    let width = (markerLabel(paragraph) as NSString).size(withAttributes: [.font: NoteFormat.font]).width
     let right = origin.x + NoteFormat.indent * CGFloat(paragraph.style.depth) + NoteFormat.listPadding
     return NSRect(x: right - width - 4, y: origin.y + line.minY, width: width + 4, height: line.height)
   }
