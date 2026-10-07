@@ -9,6 +9,14 @@ struct SearchResult: Identifiable {
   let excerpt: String
 }
 
+struct StarredItem: Identifiable {
+  var id: String { "\(date)#\(n)" }
+  let date: String
+  let n: Int
+  let text: String
+  let label: String
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -20,12 +28,14 @@ final class AppModel {
   var searchOpen = false
   var searchFocusRequest = 0
   var saveError: String?
+  var starred: [StarredItem] = []
   @ObservationIgnored private var searchTask: Task<Void, Never>?
 
   init(store: NoteStore) {
     self.store = store
     feed = FeedController(store: store)
     feed.model = self
+    reloadStarred()
   }
 
   static func dataURL(arguments: [String] = CommandLine.arguments) -> URL {
@@ -71,6 +81,34 @@ final class AppModel {
     query = ""
     results = []
     searchOpen = false
+  }
+
+  func reloadStarred() {
+    let notes = (try? store.notesContainingStar()) ?? []
+    starred = notes.flatMap { note in
+      Outline.describe(Outline.parse(note.content)).filter(\.starred).map { item in
+        StarredItem(date: note.date, n: item.n, text: starredText(item.text), label: Day.shortTitle(note.date))
+      }
+    }
+  }
+
+  func openStarred(_ item: StarredItem) {
+    searchOpen = false
+    feed.jump(to: item.date, focus: false, animated: false)
+    feed.revealItem(item.n, on: item.date)
+  }
+
+  private func starredText(_ text: String) -> String {
+    text
+      .replacingOccurrences(of: "<br>", with: " ")
+      .replacingOccurrences(
+        of: #"!\[[^\]]*\]\(noterepo:image:[a-f0-9]{64}\)"#, with: "Image", options: [.regularExpression, .caseInsensitive]
+      )
+      .replacingOccurrences(
+        of: #"\[([^\]]+)\]\((https?://[^\s)]+)\)"#, with: "$1", options: [.regularExpression, .caseInsensitive]
+      )
+      .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   func jump(to date: String) {

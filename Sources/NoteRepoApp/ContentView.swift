@@ -55,7 +55,11 @@ struct SidebarView: View {
       searchField
         .zIndex(1)
 
-      Spacer(minLength: 0)
+      if !model.starred.isEmpty {
+        starredList
+      } else {
+        Spacer(minLength: 0)
+      }
 
       if let error = model.saveError {
         Text(error)
@@ -66,6 +70,24 @@ struct SidebarView: View {
     }
     .padding(EdgeInsets(top: 52, leading: 14, bottom: 14, trailing: 14))
     .onChange(of: model.searchFocusRequest) { searchFocused = true }
+  }
+
+  private var starredList: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Starred")
+        .font(Font(Theme.mono(11)))
+        .foregroundStyle(Color(Theme.muted))
+        .padding(.horizontal, 8)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+          ForEach(model.starred) { item in
+            StarredRow(item: item) { model.openStarred(item) }
+          }
+        }
+      }
+      .scrollIndicators(.never)
+    }
+    .frame(maxHeight: .infinity, alignment: .top)
   }
 
   private var searchField: some View {
@@ -95,6 +117,40 @@ struct SidebarView: View {
             .offset(y: 34)
         }
       }
+  }
+}
+
+struct StarredRow: View {
+  let item: StarredItem
+  let action: () -> Void
+  @State private var hovered = false
+
+  var body: some View {
+    Button(action: action) {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Image(systemName: "star.fill")
+          .font(.system(size: 9))
+          .foregroundStyle(Color(Theme.star))
+        VStack(alignment: .leading, spacing: 2) {
+          Text(item.text)
+            .font(Font(Theme.mono(11)))
+            .foregroundStyle(Color(Theme.text))
+            .lineLimit(1)
+          Text(item.label)
+            .font(Font(Theme.mono(10)))
+            .foregroundStyle(Color(Theme.muted))
+            .lineLimit(1)
+        }
+      }
+      .truncationMode(.tail)
+      .padding(.vertical, 5)
+      .padding(.horizontal, 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(RoundedRectangle(cornerRadius: 5).fill(Color(hovered ? Theme.field : .clear)))
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .onHover { hovered = $0 }
   }
 }
 

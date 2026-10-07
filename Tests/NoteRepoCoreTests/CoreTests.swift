@@ -107,6 +107,10 @@ import Testing
   #expect(try store.has("2026-09-28"))
   #expect(try store.notesBefore("2026-09-30", limit: 7).map(\.date) == ["2026-09-28"])
   #expect(try store.search("mine").count == 1)
+  try store.save("2026-09-27", "- ★ Buy milk\n- Bread")
+  let starred = try store.notesContainingStar()
+  #expect(starred.map(\.date) == ["2026-09-27"])
+  #expect(Outline.describe(Outline.parse(starred[0].content)).filter(\.starred).map(\.text) == ["Buy milk"])
 
   let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
   let id = try store.saveImage(data: png, mimeType: "image/png", fileName: "pixel.png", width: 1, height: 1)

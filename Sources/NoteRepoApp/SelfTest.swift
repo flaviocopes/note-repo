@@ -166,6 +166,11 @@ enum SelfTest {
       "a star survives a reload",
       starred.paragraphs[groceries].style.starred && !starred.textStorage!.string.contains("★"),
       starred.markdown)
+    today.save()
+    check(
+      "starred items show in the sidebar",
+      model.starred.contains { $0.text.hasPrefix("Groceries") },
+      model.starred.map(\.text).joined(separator: ", "))
     await undo(view)
     check("undo removes the star", !view.markdown.contains("★") && view.paragraphs[groceries].style.starred == false, view.markdown)
     view.insertNewline(nil)

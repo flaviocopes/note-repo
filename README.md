@@ -41,7 +41,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Continuous scrolling back through the days that have notes
 - Bulleted and numbered lists started with `-` or `1.`
 - Nested list items with `Tab` and `Shift+Tab`
-- Star an item by hovering its bullet and clicking
+- Star an item by hovering its bullet and clicking. Starred items show in the sidebar
 - Several lines in one item with `⌥Return`
 - Automatic saving
 - Fast text search

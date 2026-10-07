@@ -82,6 +82,22 @@ final class DayView: NSView, NoteTextViewOwner {
     textView.setSelectedRange(NSRange(location: textView.textStorage?.length ?? 0, length: 0))
   }
 
+  func itemOffset(_ n: Int) -> CGFloat? {
+    guard let layout = textView.layoutManager, let container = textView.textContainer else { return nil }
+    layout.ensureLayout(for: container)
+    var seen = 0
+    for paragraph in textView.paragraphs where paragraph.range.length > 0 {
+      seen += 1
+      guard seen == n else { continue }
+      let glyph = layout.glyphIndexForCharacter(at: paragraph.range.location)
+      var rect = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+      rect.origin.x += textView.textContainerOrigin.x
+      rect.origin.y += textView.textContainerOrigin.y
+      return textView.convert(rect, to: self).minY
+    }
+    return nil
+  }
+
   // MARK: Saving
 
   func textChanged() {
@@ -114,6 +130,7 @@ final class DayView: NSView, NoteTextViewOwner {
         base = text
       }
       feed.saveStateChanged(date: date, error: nil)
+      feed.model?.reloadStarred()
     } catch {
       feed.saveStateChanged(date: date, error: "Could not save")
     }
@@ -324,6 +341,11 @@ final class FeedController: NSObject {
     if model?.activeDate != day.date { model?.activeDate = day.date }
   }
 
+  func revealItem(_ n: Int, on date: String) {
+    guard let day = days.first(where: { $0.date == date }), let offset = day.itemOffset(n) else { return }
+    setTop(day.frame.minY + offset - 40, animated: true)
+  }
+
   func jump(to requested: String, focus: Bool, animated: Bool = true) {
     let date = min(requested, Day.today)
     if let day = days.first(where: { $0.date == date }) {
@@ -365,6 +387,7 @@ final class FeedController: NSObject {
     versions = next
     let changed = dates.filter { $0 <= Day.today }
     guard !changed.isEmpty else { return }
+    model?.reloadStarred()
     if changed.count > 10 {
       load(anchor: model?.activeDate ?? Day.today)
       return

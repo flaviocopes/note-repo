@@ -219,6 +219,15 @@ public final class NoteStore {
     }
   }
 
+  public func notesContainingStar() throws -> [Note] {
+    try notes(
+      """
+      SELECT date, content, updated_at FROM notes
+      WHERE instr(content, ?) > 0
+      ORDER BY date DESC
+      """, [.text("★")])
+  }
+
   public func search(_ text: String) throws -> [Note] {
     let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !normalized.isEmpty else { return [] }
