@@ -117,8 +117,6 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       .underlineColor: Theme.linkUnderline, .cursor: NSCursor.pointingHand,
     ]
     typingAttributes = NoteFormat.attributes(ListStyle())
-    NotificationCenter.default.addObserver(
-      self, selector: #selector(tweetLoaded(_:)), name: .tweetLoaded, object: nil)
   }
 
   // MARK: Content
@@ -273,18 +271,6 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   override func viewDidChangeEffectiveAppearance() {
     super.viewDidChangeEffectiveAppearance()
     relayoutAttachments()
-  }
-
-  @objc private func tweetLoaded(_ notification: Notification) {
-    guard let id = notification.object as? String, let storage = textStorage else { return }
-    var found = false
-    storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, _, stop in
-      if (value as? TweetAttachment)?.tweet.id == id {
-        found = true
-        stop.pointee = true
-      }
-    }
-    if found { relayoutAttachments() }
   }
 
   func relayoutAttachments() {
@@ -657,11 +643,6 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     let selection = selectedRange()
     let emptyParagraph = paragraph.range.length == 0 || NSEqualRanges(selection, paragraph.range)
 
-    if Links.tweet(text) != nil && emptyParagraph {
-      replace(paragraph.range, with: NoteFormat.body(text, attributes: attributes, store: owner.store))
-      if index == paragraphs.count - 1 { trailingStyle = nil }
-      return openItemAfter(index)
-    }
     if Links.imageItem(text) != nil {
       return insertItems(NoteFormat.body(text, attributes: NoteFormat.attributes(ListStyle(depth: paragraph.style.depth)), store: owner.store),
         style: ListStyle(depth: paragraph.style.depth), after: index)

@@ -7,13 +7,13 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
 - `Sources/NoteRepoCore/`: shared by the app and the CLI.
   - `Outline.swift`: the model of a day's text. It parses list lines, renumbers them, and describes items for the CLI. It also merges an outside change into unsaved edits. `serialize` keeps untouched lines as they were saved, and `normalized` formats every line the way the editor saves them.
   - `Store.swift`: the SQLite database: notes, images, search, backups and restores.
-  - `Links.swift`: inline links and images in a line, X post URLs, and page titles, with Reddit and YouTube handling.
+  - `Links.swift`: inline links and images in a line, and page titles, with Reddit, YouTube and X handling. An X post keeps the first line of its text.
   - `Dates.swift`, `Images.swift` (image type checks), and `Version.swift`, the one place the version lives.
 - `Sources/NoteRepoApp/`: the app.
   - `NoteTextView.swift`: the editor, an `NSTextView`. It handles bullets, Tab nesting, paste and drop, and copy as Markdown.
   - `NoteFormat.swift`: turns Markdown into the editor's text and back. A line break inside an item (⌥Return) is a U+2028 line separator in the editor and `<br>` in the saved text, so every item stays on one line.
   - `Feed.swift`: the scrolling list of days, saving, and reloading days changed outside the app.
-  - `Attachments.swift` and `TweetCard.swift`: images and X post cards.
+  - `Attachments.swift`: images inside a day's text.
   - `ContentView.swift`, `AppModel.swift`, `Theme.swift` and `main.swift`: the window, sidebar, search, colors and menus.
   - `SelfTest.swift` and `Automation.swift`: the `--self-test`, `--round-trip` and `--automation` switches.
   - `AppUpdater.swift`: checks the GitHub releases once a day and installs updates. It's an identical copy of the template in the `mac-app-updater` skill, so change the template and copy it over instead of editing it here.

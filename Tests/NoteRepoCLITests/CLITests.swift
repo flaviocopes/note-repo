@@ -109,7 +109,23 @@ func content(_ day: JSON) -> String? { day["content"]?.string }
   #expect(try await book.ok("days")["days"]!.array.map { $0["date"]?.string } == ["2026-09-25"])
 }
 
-@Test func addsImagesAndKeepsXPostsAsPreviews() async throws {
+final class XPostStub: URLProtocol {
+  static var body = ""
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+  override func stopLoading() {}
+
+  override func startLoading() {
+    let response = HTTPURLResponse(
+      url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(XPostStub.body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+}
+
+@Test func addsImagesAndTitlesXPosts() async throws {
   let book = try Notebook()
   let image = book.directory.appendingPathComponent("screenshot.png")
   try pixelPNG.write(to: image)
@@ -119,16 +135,23 @@ func content(_ day: JSON) -> String? { day["content"]?.string }
   #expect(day["items"]![0]!["kind"]?.string == "image")
   #expect(day["items"]![0]!["image"]?["alt"]?.string == "screenshot.png")
 
-  let post = "https://x.com/flaviocopes/status/1715793063551832106"
-  day = try await book.ok("add", post)
-  #expect(day["items"]![1]!["kind"]?.string == "post")
-  #expect(day["items"]![1]!["text"]?.string == post)
-  #expect(day["items"]![1]!["post"]?["user"]?.string == "flaviocopes")
+  let configuration = URLSessionConfiguration.ephemeral
+  configuration.protocolClasses = [XPostStub.self]
+  let previous = LinkTitles.session
+  LinkTitles.session = URLSession(configuration: configuration)
+  defer { LinkTitles.session = previous }
+  XPostStub.body =
+    #"{"__typename":"Tweet","text":"just setting up my twttr\nsecond line","display_text_range":[0,31]}"#
 
-  let title = await book.run(["title", post])
-  #expect(
-    title.text
-      == "{\n  \"url\": \"\(post)\",\n  \"title\": null,\n  \"text\": \"\(post)\",\n  \"preview\": \"x-post\"\n}\n")
+  let post = "https://x.com/jack/status/20"
+  day = try await book.ok("add", post)
+  #expect(day["items"]![1]!["kind"]?.string == "link")
+  #expect(day["items"]![1]!["text"]?.string == "[just setting up my twttr](\(post)) (x.com)")
+
+  let title = try await book.ok("title", post)
+  #expect(title["title"]?.string == "just setting up my twttr")
+  #expect(title["text"]?.string == "[just setting up my twttr](\(post)) (x.com)")
+  #expect(title["preview"] == nil)
   #expect(try await book.ok("info")["images"]?.int == 1)
 }
 

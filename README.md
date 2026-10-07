@@ -48,13 +48,13 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Reddit links show the post title, and links to a comment read "Comment to" followed by the post title
 - YouTube links show the video title, including Shorts, `youtu.be` and embed links
 - Pasted text is cleaned of stray blank lines, trailing spaces, and invisible characters
-- Rich previews for X and Twitter links pasted on their own line
+- X and Twitter links show the first line of the post
 - Images added by dragging a file into a day or pasting from the clipboard
 - Image items you can select and delete, or cut and paste into another day
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 
-![NoteRepo showing today's note with titled links and an X post preview](docs/screenshot.png)
+![NoteRepo showing today's note with titled links](docs/screenshot.png)
 
 ## Keyboard shortcuts
 
@@ -68,10 +68,9 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 
 ## Privacy
 
-NoteRepo goes online in only three cases, and none of them sends your notes anywhere:
+NoteRepo goes online in only two cases. Your notes stay on this Mac:
 
-- When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead.
-- When a note contains an X post, it asks X's public embed service for the post's author, text and photo, and draws the preview itself.
+- When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead. For an X post, it asks X's public embed service for the text and keeps the first line.
 - Once a day, it asks GitHub for the latest NoteRepo release, to check for an update. The request carries the app's name and version.
 
 ## Use it from the command line
@@ -120,7 +119,7 @@ noterepo show
 }
 ```
 
-Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link`, `image`, or `post` for an X post. `content` is the day as NoteRepo stores it.
+Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link` or `image`. `content` is the day as NoteRepo stores it.
 
 For another day, pass a date as `YYYY-MM-DD`, `today` or `yesterday`:
 
@@ -166,7 +165,7 @@ A URL on its own gets its page title, the same as pasting it in the app:
 noterepo add https://sqlite.org/wal.html
 ```
 
-It's saved as `[Write-Ahead Logging](https://sqlite.org/wal.html) (sqlite.org)`. Reddit links get the post title, and links to a comment read "Comment to" followed by the post title. YouTube links get the video title. X posts stay as URLs, so the app shows the preview. Add `--raw` to keep any URL as it is.
+It's saved as `[Write-Ahead Logging](https://sqlite.org/wal.html) (sqlite.org)`. Reddit links get the post title, and links to a comment read "Comment to" followed by the post title. YouTube links get the video title. An X post gets the first line of its text. Add `--raw` to keep any URL as it is.
 
 To check the title without writing anything, use `title`:
 
@@ -319,7 +318,7 @@ The app icon lives in `resources/AppIcon.svg`, and the build uses `resources/App
 
 ## How it works
 
-SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26. The editor draws the bullets and numbers in the margin, shows links by their titles, and puts images and X posts inside the text as attachments. When you save, it turns the day back into Markdown list lines. A line break inside an item is saved as `<br>`, so every item stays on one line.
+SwiftUI draws the window, the sidebar and search. Each day is an AppKit text view, because SwiftUI's own rich text editor needs macOS 26. The editor draws the bullets and numbers in the margin, shows links by their titles, and puts images inside the text as attachments. When you save, it turns the day back into Markdown list lines. A line break inside an item is saved as `<br>`, so every item stays on one line.
 
 Notes and images go into SQLite through the `sqlite3` library that comes with macOS. `NoteRepoCore` holds the parts the app and the `noterepo` tool share: the notes model, the database, and the code that fetches link titles.
 

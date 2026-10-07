@@ -15,7 +15,6 @@ enum Theme {
   }
 
   static let background = dynamic(rgb(0xfafafa), rgb(0x14191b))
-  static let card = dynamic(rgb(0xffffff), rgb(0x1e2427))
   static let raised = dynamic(rgb(0xf2f2f2), rgb(0x242b2d))
   static let field = dynamic(rgb(0x000000, 0.035), rgb(0xffffff, 0.04))
   static let popover = dynamic(rgb(0xffffff), rgb(0x1b2123))

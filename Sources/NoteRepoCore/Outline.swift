@@ -27,7 +27,6 @@ public struct OutlineItem {
     case text
     case link([(title: String?, url: String)])
     case image(id: String, alt: String)
-    case post(Tweet)
   }
 
   public let n: Int
@@ -162,8 +161,6 @@ public enum Outline {
       let kind: OutlineItem.Kind
       if let image = Links.imageItem(text) {
         kind = .image(id: image.id, alt: image.alt)
-      } else if let post = Links.tweet(text) {
-        kind = .post(post)
       } else {
         let links = itemLinks(text)
         kind = links.isEmpty ? .text : .link(links)

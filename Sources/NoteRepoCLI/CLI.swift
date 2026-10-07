@@ -71,7 +71,7 @@ public enum CLI {
       add TEXT [--date DATE] [--after N | --before N] [--level L] [--numbered | --bullet] [--raw]
                                       Add one item, at the end of the day by default.
                                       A URL on its own gets its page title, like pasting it.
-                                      X posts stay as URLs so the app shows a preview.
+                                      An X post gets the first line of its text.
       image FILE [--date DATE] [--after N | --before N] [--level L]
                                       Add a PNG, JPEG, GIF, WebP or SVG image
       edit N [TEXT] [--date DATE] [--level L] [--numbered | --bullet] [--raw]
@@ -213,9 +213,6 @@ public enum CLI {
     case .image(let id, let alt):
       kind = "image"
       extra = .object(["image": .object(["id": .string(id), "alt": .string(alt)])])
-    case .post(let post):
-      kind = "post"
-      extra = .object(["post": .object(["url": .string(post.url), "user": .string(post.user), "id": .string(post.id)])])
     }
     return JSON.object([
       "n": .int(item.n), "level": .int(item.level), "list": .string(item.ordered ? "numbered" : "bullet"),
@@ -347,7 +344,7 @@ public enum CLI {
   // MARK: Text and titles
 
   static func titled(_ value: String, raw: Bool) async -> String {
-    guard !raw, isBareURL(value), Links.tweet(value) == nil else { return value }
+    guard !raw, isBareURL(value) else { return value }
     guard let title = await LinkTitles.fetch(value) else { return value }
     return Links.linkText(url: value, title: title)
   }
@@ -504,9 +501,6 @@ public enum CLI {
     "title": Command { _, _, parsed, _ in
       guard let url = parsed.positionals.first, isBareURL(url) else {
         throw usage("Pass a web link starting with http:// or https://")
-      }
-      if Links.tweet(url) != nil {
-        return .object(["url": .string(url), "title": .null, "text": .string(url), "preview": .string("x-post")])
       }
       let title = await LinkTitles.fetch(url)
       return .object([

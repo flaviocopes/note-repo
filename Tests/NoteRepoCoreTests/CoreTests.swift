@@ -53,8 +53,9 @@ import Testing
 }
 
 @Test func recognizesSpecialLinks() {
-  #expect(Links.tweet("https://x.com/flaviocopes/status/1715793063551832106")?.user == "flaviocopes")
-  #expect(Links.tweet("https://x.com/flaviocopes") == nil)
+  #expect(LinkTitles.xPost("https://x.com/flaviocopes/status/1715793063551832106") == "1715793063551832106")
+  #expect(LinkTitles.xPost("https://twitter.com/flaviocopes/status/1715793063551832106?s=20") == "1715793063551832106")
+  #expect(LinkTitles.xPost("https://x.com/flaviocopes") == nil)
   #expect(LinkTitles.youtubeVideo("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ")
   #expect(LinkTitles.youtubeVideo("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=4") == "dQw4w9WgXcQ")
   #expect(LinkTitles.youtubeVideo("https://www.youtube.com/shorts/dQw4w9WgXcQ") == "dQw4w9WgXcQ")

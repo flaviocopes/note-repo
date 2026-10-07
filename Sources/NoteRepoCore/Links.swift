@@ -18,12 +18,6 @@ extension NSRegularExpression {
   }
 }
 
-public struct Tweet: Equatable, Sendable {
-  public let url: String
-  public let user: String
-  public let id: String
-}
-
 public enum InlineToken: Equatable, Sendable {
   case text(String)
   case link(title: String?, url: String)
@@ -35,9 +29,6 @@ public enum Links {
     #"!\[([^\]]*)\]\(noterepo:image:([a-f0-9]{64})\)|\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://[^\s<>()\]]+)"#,
     .caseInsensitive)
   static let trailingPunctuation = NSRegularExpression(#"[.,;!?]+$"#)
-  static let tweetPattern = NSRegularExpression(
-    #"^https?://(?:www\.)?(?:x\.com|twitter\.com)/([a-z0-9_]+)/status/(\d+)(?:[/?#].*)?$"#,
-    .caseInsensitive)
   static let imageItem = NSRegularExpression(#"^!\[([^\]]*)\]\(noterepo:image:([a-f0-9]{64})\)$"#, .caseInsensitive)
 
   public static func tokens(_ body: String) -> [InlineToken] {
@@ -70,12 +61,6 @@ public enum Links {
   static func trimTrailingPunctuation(_ value: String) -> String {
     trailingPunctuation.stringByReplacingMatches(
       in: value, range: NSRange(value.startIndex..., in: value), withTemplate: "")
-  }
-
-  public static func tweet(_ value: String) -> Tweet? {
-    let url = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let groups = tweetPattern.groups(in: url), let user = groups[1], let id = groups[2] else { return nil }
-    return Tweet(url: url, user: user, id: id)
   }
 
   public static func imageItem(_ body: String) -> (id: String, alt: String)? {
@@ -128,10 +113,13 @@ public enum LinkTitles {
   static let youtubeHost = NSRegularExpression(#"^(?:(?:www|m|music)\.)?youtube(?:-nocookie)?\.com$"#, .caseInsensitive)
   static let youtubePath = NSRegularExpression(#"^(?:shorts|live|embed|v)$"#, .caseInsensitive)
   static let youtubeID = NSRegularExpression(#"^[\w-]{11}$"#)
+  static let xPostPattern = NSRegularExpression(
+    #"^https?://(?:www\.)?(?:x\.com|twitter\.com)/[a-z0-9_]+/status/(\d+)(?:[/?#].*)?$"#, .caseInsensitive)
 
   public static func fetch(_ value: String) async -> String? {
     guard let url = URL(string: value), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https"
     else { return nil }
+    if let post = xPost(url.absoluteString) { return await xPostTitle(post) }
     if let video = youtubeVideo(url.absoluteString) { return await youtubeTitle(video) }
     if redditLink(url.absoluteString) != nil { return await redditTitle(url.absoluteString) }
     return await pageTitle(url)
@@ -348,6 +336,58 @@ public enum LinkTitles {
       let title = await pageTitle(url)
     else { return nil }
     return title.range(of: #"^-?\s*YouTube$"#, options: [.regularExpression, .caseInsensitive]) == nil ? title : nil
+  }
+
+  static func xPost(_ value: String) -> String? {
+    xPostPattern.groups(in: value)?[1]
+  }
+
+  /// The token X's embed service expects next to a post ID.
+  static func syndicationToken(_ id: String) -> String {
+    let digits = Array("0123456789abcdefghijklmnopqrstuvwxyz")
+    let value = (Double(id) ?? 0) / 1e15 * Double.pi
+    var integer = Int(value)
+    var fraction = value - Double(integer)
+    var text = ""
+    repeat {
+      text = String(digits[integer % 36]) + text
+      integer /= 36
+    } while integer > 0
+    for _ in 0..<11 where fraction > 0 {
+      fraction *= 36
+      let digit = Int(fraction)
+      text.append(digits[digit])
+      fraction -= Double(digit)
+    }
+    let token = text.replacingOccurrences(of: "0", with: "")
+    return token.isEmpty ? "a" : token
+  }
+
+  static func xPostTitle(_ id: String) async -> String? {
+    guard
+      let url = URL(
+        string: "https://cdn.syndication.twimg.com/tweet-result?id=\(id)&lang=en&token=\(syndicationToken(id))"),
+      let (data, response) = try? await session.data(for: request(url, accept: "application/json")),
+      (response as? HTTPURLResponse)?.statusCode == 200,
+      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      json["__typename"] as? String == "Tweet", var text = json["text"] as? String
+    else { return nil }
+    if let range = json["display_text_range"] as? [Any], range.count == 2, let start = range[0] as? NSNumber,
+      let end = range[1] as? NSNumber
+    {
+      let scalars = Array(text.unicodeScalars)
+      let lower = max(0, min(start.intValue, scalars.count))
+      let upper = max(lower, min(end.intValue, scalars.count))
+      text = String(String.UnicodeScalarView(scalars[lower..<upper]))
+    }
+    let urls = (json["entities"] as? [String: Any])?["urls"] as? [[String: Any]] ?? []
+    for link in urls {
+      if let short = link["url"] as? String, let display = link["display_url"] as? String {
+        text = text.replacingOccurrences(of: short, with: display)
+      }
+    }
+    let line = text.split(whereSeparator: \.isNewline).lazy.map { cleanPageText(String($0)) }.first { !$0.isEmpty }
+    return line.map { String($0.prefix(280)) }
   }
 
   static func oembedTitle(_ endpoint: String, _ target: String, limit: Int) async -> (title: String?, status: Int) {

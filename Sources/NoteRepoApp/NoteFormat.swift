@@ -104,11 +104,6 @@ enum NoteFormat {
   }
 
   static func body(_ body: String, attributes: [NSAttributedString.Key: Any], store: NoteStore?) -> NSAttributedString {
-    if let tweet = Links.tweet(body) {
-      let text = NSMutableAttributedString(attachment: TweetAttachment(tweet: tweet))
-      text.addAttributes(attributes, range: NSRange(location: 0, length: text.length))
-      return text
-    }
     let result = NSMutableAttributedString()
     for token in Links.tokens(body) {
       switch token {

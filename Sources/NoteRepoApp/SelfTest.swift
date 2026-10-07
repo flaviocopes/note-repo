@@ -165,8 +165,12 @@ enum SelfTest {
     check("the caret moved to a new item", view.paragraphs[view.currentIndex ?? 0].range.length == 0)
 
     paste(view, "https://x.com/jack/status/20")
-    check("an X post becomes a card", view.paragraphs.contains { $0.attachment is TweetAttachment })
-    check("the X post saves as its URL", view.markdown.contains("\n- https://x.com/jack/status/20"), view.markdown)
+    var postTitled = false
+    for _ in 0..<40 where !postTitled {
+      await wait(0.25)
+      postTitled = view.markdown.contains("\n- [just setting up my twttr](https://x.com/jack/status/20) (x.com)")
+    }
+    check("an X post gets the first line of its text", postTitled, view.markdown)
 
     let board = NSPasteboard(name: NSPasteboard.Name("NoteRepoSelfTestImage"))
     board.clearContents()

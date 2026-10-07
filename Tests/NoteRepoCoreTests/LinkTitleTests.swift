@@ -126,6 +126,34 @@ let htmxTitle = #"{"title": "htmx: Simplicity in an Age of Complicated Solutions
     #expect(await LinkTitles.fetch("https://www.youtube.com/watch?v=aaaaaaaaaaa") == nil)
   }
 
+  @Test func usesTheFirstLineOfAnXPost() async {
+    stub { url in
+      guard url.host == "cdn.syndication.twimg.com" else { return (404, [:], "") }
+      return json(
+        #"{"__typename":"Tweet","text":"just setting up my twttr https://t.co/abc\nsecond line","display_text_range":[0,24],"entities":{"urls":[{"url":"https://t.co/abc","display_url":"flaviocopes.com"}]}}"#
+      )
+    }
+    #expect(LinkTitles.syndicationToken("20") == "6dq")
+    #expect(await LinkTitles.fetch("https://twitter.com/jack/status/20?s=20") == "just setting up my twttr")
+    #expect(StubProtocol.requests[0].host == "cdn.syndication.twimg.com")
+    #expect(StubProtocol.requests[0].query?.contains("id=20") == true)
+    #expect(StubProtocol.requests[0].query?.contains("token=6dq") == true)
+  }
+
+  @Test func replacesAShortLinkOnTheFirstLine() async {
+    stub { _ in
+      json(
+        #"{"__typename":"Tweet","text":"Read https://t.co/abc today","display_text_range":[0,28],"entities":{"urls":[{"url":"https://t.co/abc","display_url":"flaviocopes.com/post"}]}}"#
+      )
+    }
+    #expect(await LinkTitles.fetch("https://x.com/flaviocopes/status/1715793063551832106") == "Read flaviocopes.com/post today")
+  }
+
+  @Test func leavesAnXPostWithoutATitleWhenXDoesNotAnswer() async {
+    stub { _ in json(#"{"__typename":"TweetTombstone"}"#) }
+    #expect(await LinkTitles.fetch("https://x.com/jack/status/20") == nil)
+  }
+
   @Test func readsPageTitlesWithoutTheSiteName() async {
     stub { _ in
       (200, ["Content-Type": "text/html"], "<html><head><title>How to use SQLite &amp; Node | flaviocopes</title></head>")
@@ -168,11 +196,12 @@ let htmxTitle = #"{"title": "htmx: Simplicity in an Age of Complicated Solutions
     return
   }
   #expect(id == image && alt == "Screenshot")
-  guard case .post(let tweet) = items[3].kind else {
-    Issue.record("item 4 isn't a post")
+  guard case .link(let links) = items[3].kind else {
+    Issue.record("item 4 isn't a link")
     return
   }
-  #expect(tweet.user == "flaviocopes")
+  #expect(links.map(\.title) == [nil])
+  #expect(links.map(\.url) == ["https://x.com/flaviocopes/status/1715793063551832106"])
 }
 
 @Test func turnsMarkdownWrittenByAgentsIntoNoteRepoLines() {
