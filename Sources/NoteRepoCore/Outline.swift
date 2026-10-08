@@ -225,7 +225,7 @@ public enum Outline {
     return (level, false, trim(text))
   }
 
-  /// Turns Markdown written by agents into NoteRepo lines, ready to insert.
+  /// Turns Markdown written by agents into Note Repo lines, ready to insert.
   public static func inputEntries(_ text: String) -> [OutlineEntry] {
     lines(cleanText(text)).compactMap { line in
       let parsed = parseInputLine(line)

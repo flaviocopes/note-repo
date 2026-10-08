@@ -1,11 +1,11 @@
 #!/bin/zsh
-# Builds build/NoteRepo.app for Apple silicon and Intel, with the noterepo CLI inside.
+# Builds build/Note Repo.app for Apple silicon and Intel, with the noterepo CLI inside.
 # Signs it with Flavio's Developer ID when the certificate is in the keychain, and ad-hoc everywhere else (CI, forks).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 version=$(sed -n 's/.*current = "\(.*\)".*/\1/p' Sources/NoteRepoCore/Version.swift)
-app=build/NoteRepo.app
+app="build/Note Repo.app"
 products=.build/apple/Products/Release
 
 swift build -c release --arch arm64 --arch x86_64 --product NoteRepoApp
@@ -13,7 +13,7 @@ swift build -c release --arch arm64 --arch x86_64 --product noterepo
 
 rm -rf "$app" build/AppIcon.iconset
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/bin" build/AppIcon.iconset
-cp "$products/NoteRepoApp" "$app/Contents/MacOS/NoteRepo"
+cp "$products/NoteRepoApp" "$app/Contents/MacOS/Note Repo"
 cp "$products/noterepo" "$app/Contents/Resources/bin/noterepo"
 sed "s/__VERSION__/$version/g" resources/Info.plist > "$app/Contents/Info.plist"
 
@@ -35,4 +35,4 @@ fi
 codesign --force "${sign[@]}" "$app/Contents/Resources/bin/noterepo"
 codesign --force "${sign[@]}" "$app"
 codesign --verify --deep --strict "$app"
-echo "Built $app $version for $(lipo -archs "$app/Contents/MacOS/NoteRepo"), $signature signed"
+echo "Built $app $version for $(lipo -archs "$app/Contents/MacOS/Note Repo"), $signature signed"

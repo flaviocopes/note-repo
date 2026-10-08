@@ -1,33 +1,33 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png" />
-  <img src="docs/banner-light.png" alt="NoteRepo, a quiet, local-first daily notes app for macOS" />
+  <img src="docs/banner-light.png" alt="Note Repo, a quiet, local-first daily notes app for macOS" />
 </picture>
 
-NoteRepo opens on today, which fills the whole window. Scroll up to see earlier days. Only the days where you wrote something show up, and there are no future days.
+Note Repo opens on today, which fills the whole window. Scroll up to see earlier days. Only the days where you wrote something show up, and there are no future days.
 
 There are no accounts, AI tools, or calendar integrations. Your notes live in a SQLite file on your Mac.
 
-Read the announcement on my blog: [I built NoteRepo, a quiet daily notes app for macOS](https://flaviocopes.com/noterepo/).
+Read the announcement on my blog: [I built Note Repo, a quiet daily notes app for macOS](https://flaviocopes.com/note-repo/).
 
-[![Watch the 30-second NoteRepo demo](docs/showreel-poster.jpg)](https://github.com/flaviocopes/noterepo/raw/main/docs/showreel.mp4)
+[![Watch the 30-second Note Repo demo](docs/showreel-poster.jpg)](https://flaviocopes.com/note-repo/)
 
-NoteRepo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lists what changed in each release.
+Note Repo is a native Mac app written in Swift. The [changelog](CHANGELOG.md) lists what changed in each release.
 
 ## Download
 
-Get `NoteRepo-2.4.0.zip` from the [latest release](https://github.com/flaviocopes/noterepo/releases/latest), unzip it, and drag NoteRepo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
+Get `Note-Repo-2.5.0.zip` from the [latest release](https://github.com/flaviocopes/note-repo/releases/latest), unzip it, and drag Note Repo to your Applications folder. It runs on Apple silicon and Intel Macs with macOS 14 or later.
 
 Coming from 1.x? Replace the old app with the new one. Your notes stay where they are.
 
 ### Opening it the first time
 
-NoteRepo is signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS asks if you're sure you want to open an app downloaded from the internet. Click **Open**.
+Note Repo is signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS asks if you're sure you want to open an app downloaded from the internet. Click **Open**.
 
-On a work laptop you might not be able to install apps in `/Applications`. You can keep NoteRepo in the `Applications` folder inside your home folder instead.
+On a work laptop you might not be able to install apps in `/Applications`. You can keep Note Repo in the `Applications` folder inside your home folder instead.
 
 ### Updates
 
-Once a day, NoteRepo asks GitHub whether there's a newer version. When there is, it shows what's new, and **Install and Relaunch** puts it in place of the old one. **NoteRepo → Check for Updates…** checks right away.
+Once a day, Note Repo asks GitHub whether there's a newer version. When there is, it shows what's new, and **Install and Relaunch** puts it in place of the old one. **Note Repo → Check for Updates…** checks right away.
 
 To turn off the daily check, run this in Terminal:
 
@@ -55,7 +55,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 
-![NoteRepo showing today's note with titled links](docs/screenshot.png)
+![Note Repo showing today's note with titled links](docs/screenshot.png)
 
 ## Keyboard shortcuts
 
@@ -69,14 +69,14 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 
 ## Privacy
 
-NoteRepo goes online in only two cases. Your notes stay on this Mac:
+Note Repo goes online in only two cases. Your notes stay on this Mac:
 
 - When you paste a link, it downloads that page to read its title. For a Reddit or YouTube link, it asks that site's embed service for the title instead. For an X post, it asks X's public embed service for the text and keeps the first line.
-- Once a day, it asks GitHub for the latest NoteRepo release, to check for an update. The request carries the app's name and version.
+- Once a day, it asks GitHub for the latest Note Repo release, to check for an update. The request carries the app's name and version.
 
 ## Use it from the command line
 
-NoteRepo comes with `noterepo`, a command-line tool. I built it for coding agents, but you can use it too. It reads your days, adds items, links and images, moves things around, and backs up the notebook. Every command prints JSON.
+Note Repo comes with `noterepo`, a command-line tool. I built it for coding agents, but you can use it too. It reads your days, adds items, links and images, moves things around, and backs up the notebook. Every command prints JSON.
 
 The tool writes to the same SQLite file as the app. The app notices within a second and updates the open window, so you see the changes as they happen. If you're typing in the same day at that moment, your edits and the tool's are merged instead of one overwriting the other.
 
@@ -86,10 +86,10 @@ The tool ships inside the app. Link it into a folder on your `PATH`:
 
 ```sh
 mkdir -p ~/.local/bin
-ln -s /Applications/NoteRepo.app/Contents/Resources/bin/noterepo ~/.local/bin/noterepo
+ln -s "/Applications/Note Repo.app/Contents/Resources/bin/noterepo" ~/.local/bin/noterepo
 ```
 
-It's a native program, so you don't need anything else installed. From a source checkout, build the app with `scripts/build.sh` and link `build/NoteRepo.app/Contents/Resources/bin/noterepo` instead.
+It's a native program, so you don't need anything else installed. From a source checkout, build the app with `scripts/build.sh` and link `build/Note Repo.app/Contents/Resources/bin/noterepo` instead.
 
 ### Read a day
 
@@ -120,7 +120,7 @@ noterepo show
 }
 ```
 
-Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link` or `image`. A starred item also has `"starred": true`. The day stores that star as `★` at the start of the line. `content` is the day as NoteRepo stores it.
+Each item has a number `n` and a `level`, where 0 is the top level and 1 is nested under the item before it. `kind` is `text`, `link` or `image`. A starred item also has `"starred": true`. The day stores that star as `★` at the start of the line. `content` is the day as Note Repo stores it.
 
 For another day, pass a date as `YYYY-MM-DD`, `today` or `yesterday`:
 
@@ -200,7 +200,7 @@ noterepo remove 3 4
 
 ```sh
 noterepo write yesterday <<'EOF'
-- Shipped NoteRepo 1.1
+- Shipped Note Repo 1.1
   - Wrote the release notes
 - https://sqlite.org/wal.html
 EOF
@@ -221,11 +221,11 @@ noterepo write --json --content '{
 noterepo clear 2026-09-28
 ```
 
-NoteRepo has no future days, so the commands that write only accept today and earlier days.
+Note Repo has no future days, so the commands that write only accept today and earlier days.
 
 ### Open the app on a day
 
-`open` brings NoteRepo to the front and scrolls to a day. It starts the app if it isn't running:
+`open` brings Note Repo to the front and scrolls to a day. It starts the app if it isn't running:
 
 ```sh
 noterepo open yesterday
@@ -273,12 +273,12 @@ You need macOS 14 or later and Xcode 16 or later, or its command line tools.
 
 ```sh
 scripts/build.sh
-open build/NoteRepo.app
+open "build/Note Repo.app"
 ```
 
-The script builds `build/NoteRepo.app` for Apple silicon and Intel, with the `noterepo` tool inside. It signs the app with my Developer ID when that certificate is in the keychain, and ad hoc everywhere else, so your copy is signed ad hoc. Drag it to your Applications folder.
+The script builds `build/Note Repo.app` for Apple silicon and Intel, with the `noterepo` tool inside. It signs the app with my Developer ID when that certificate is in the keychain, and ad hoc everywhere else, so your copy is signed ad hoc. Drag it to your Applications folder.
 
-A copy you build yourself opens without a warning on your Mac. If you send it to another Mac, macOS says it "could not verify NoteRepo is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+A copy you build yourself opens without a warning on your Mac. If you send it to another Mac, macOS says it "could not verify Note Repo is free of malware". Click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ## Where your notes live
 
@@ -288,9 +288,9 @@ Notes and images are stored in one SQLite database:
 ~/Library/Application Support/NoteRepo/notes.sqlite3
 ```
 
-Every copy of NoteRepo on your Mac uses this file, so back it up like any other document, or run `noterepo backup`.
+Every copy of Note Repo on your Mac uses this file, so back it up like any other document, or run `noterepo backup`.
 
-NoteRepo accepts PNG, JPEG, GIF, WebP, and safe SVG images up to 15 MB each. Identical images are stored only once.
+Note Repo accepts PNG, JPEG, GIF, WebP, and safe SVG images up to 15 MB each. Identical images are stored only once.
 
 ## Development
 
@@ -307,7 +307,7 @@ The app has three switches for checking changes. Each one needs `--user-data-dir
 - `--automation` lets `scripts/send.swift` save a snapshot of the window, or run commands like `jump 2026-09-28` and `dark`.
 
 ```sh
-open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test
+open -W --stdout /tmp/noterepo-check.log "build/Note Repo.app" --args --user-data-dir /tmp/noterepo-check --self-test
 cat /tmp/noterepo-check.log
 ```
 
@@ -319,7 +319,7 @@ SwiftUI draws the window, the sidebar and search. Each day is an AppKit text vie
 
 Notes and images go into SQLite through the `sqlite3` library that comes with macOS. `NoteRepoCore` holds the parts the app and the `noterepo` tool share: the notes model, the database, and the code that fetches link titles.
 
-The app checks SQLite's `data_version` every half second. When another process changed something, like the `noterepo` tool, it reloads the days that changed. Every save carries the text the editor started from. When that text no longer matches the database, NoteRepo merges the two versions line by line instead of overwriting the other change.
+The app checks SQLite's `data_version` every half second. When another process changed something, like the `noterepo` tool, it reloads the days that changed. Every save carries the text the editor started from. When that text no longer matches the database, Note Repo merges the two versions line by line instead of overwriting the other change.
 
 ## License
 

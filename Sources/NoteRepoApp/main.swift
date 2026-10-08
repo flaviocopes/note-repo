@@ -33,12 +33,12 @@ struct NoteRepoApp: App {
 
   init() {
     if !CommandLine.arguments.contains("--self-test") {
-      AppUpdater.shared.start(repository: "flaviocopes/noterepo")
+      AppUpdater.shared.start(repository: "flaviocopes/note-repo")
     }
   }
 
   var body: some Scene {
-    Window("NoteRepo", id: "main") {
+    Window("Note Repo", id: "main") {
       ContentView(model: model)
     }
     .windowStyle(.hiddenTitleBar)
@@ -78,7 +78,7 @@ MainActor.assumeIsolated {
     AppDelegate.model = AppModel(store: try NoteStore(url: url))
   } catch {
     let alert = NSAlert()
-    alert.messageText = "NoteRepo can't open its notes"
+    alert.messageText = "Note Repo can't open its notes"
     alert.informativeText = "\(url.path)\n\(error.localizedDescription)"
     alert.runModal()
     exit(1)

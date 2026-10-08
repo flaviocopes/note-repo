@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds NoteRepo, notarizes it with Apple, staples the ticket, and writes dist/NoteRepo-<version>.zip for the GitHub release.
+# Builds Note Repo, notarizes it with Apple, staples the ticket, and writes dist/Note-Repo-<version>.zip for the GitHub release.
 # Needs the Developer ID certificate in the keychain and a notarytool profile named "notary":
 #   xcrun notarytool store-credentials notary --apple-id <apple id> --team-id DGFKNTAG99
 set -euo pipefail
@@ -7,8 +7,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 scripts/build.sh
 version=$(sed -n 's/.*current = "\(.*\)".*/\1/p' Sources/NoteRepoCore/Version.swift)
-app=build/NoteRepo.app
-zip=dist/NoteRepo-$version.zip
+app="build/Note Repo.app"
+zip=dist/Note-Repo-$version.zip
 
 if [[ $(codesign -dv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p') != DGFKNTAG99 ]]; then
   echo "$app isn't signed with the Developer ID certificate, so Apple won't notarize it." >&2

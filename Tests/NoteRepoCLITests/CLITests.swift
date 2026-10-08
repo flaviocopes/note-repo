@@ -209,7 +209,7 @@ final class XPostStub: URLProtocol {
 
   try Data("nope".utf8).write(to: book.directory.appendingPathComponent("not-a-database.sqlite3"))
   let broken = await book.run(["restore", "not-a-database.sqlite3", "--yes"])
-  #expect(broken.error?.contains("isn't a NoteRepo database") == true)
+  #expect(broken.error?.contains("isn't a Note Repo database") == true)
   #expect(content(try await book.ok("show", "2026-09-20")) == "- Keep me")
 }
 
@@ -217,7 +217,7 @@ final class XPostStub: URLProtocol {
   let book = try Notebook()
   #expect(await book.run(["--version"]).text == "noterepo \(NoteRepoVersion.current)\n")
   let help = await book.run(["help"])
-  #expect(help.text.hasPrefix("noterepo \(NoteRepoVersion.current), the NoteRepo companion CLI for agents\n"))
+  #expect(help.text.hasPrefix("noterepo \(NoteRepoVersion.current), the Note Repo companion CLI for agents\n"))
   #expect(help.text.contains(#"{"2026-09-28": "- Plan\n  1. Write"}"#))
   #expect(help.text.contains("capabilities"))
 }

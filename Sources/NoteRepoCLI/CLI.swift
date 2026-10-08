@@ -45,7 +45,7 @@ public enum CLI {
   static let bareURL = NSRegularExpression(#"^https?://\S+$"#, .caseInsensitive)
 
   static let help = """
-    noterepo \(NoteRepoVersion.current), the NoteRepo companion CLI for agents
+    noterepo \(NoteRepoVersion.current), the Note Repo companion CLI for agents
 
     Every command prints JSON. Errors print {"error": "..."} to stderr and exit
     with 1, or 2 for a wrong command or option.
@@ -57,7 +57,7 @@ public enum CLI {
     is <br> in its text. Commands that take N use the n shown by "show".
     Removing or moving an item takes its nested items with it.
 
-    DATE is YYYY-MM-DD, "today" or "yesterday". NoteRepo has no future days, so
+    DATE is YYYY-MM-DD, "today" or "yesterday". Note Repo has no future days, so
     commands that write only accept today and earlier days.
 
     Read
@@ -66,7 +66,7 @@ public enum CLI {
                                       Days with notes, newest first (limit 30, 0 for all)
       show [DATE]                     Every item of a day (default today)
       search QUERY                    Days and items containing QUERY
-      title URL                       The link text NoteRepo shows for URL
+      title URL                       The link text Note Repo shows for URL
 
     Write
       add TEXT [--date DATE] [--after N | --before N] [--level L] [--numbered | --bullet] [--raw]
@@ -89,7 +89,7 @@ public enum CLI {
       clear DATE                      Delete everything written on a day
 
     App
-      open [DATE]                     Bring NoteRepo to the front on a day
+      open [DATE]                     Bring Note Repo to the front on a day
 
     Safety
       backup [--to DIR]               Save a copy of every note and image
@@ -172,7 +172,7 @@ public enum CLI {
     if date == "yesterday" { date = Day.adding(-1, to: Day.today) }
     guard Day.isKey(date) else { throw usage("\"\(original)\" isn't a date. Use YYYY-MM-DD, today or yesterday") }
     if writing && date > Day.today {
-      throw CLIError(message: "\(date) is in the future. NoteRepo only keeps notes for today and earlier days")
+      throw CLIError(message: "\(date) is in the future. Note Repo only keeps notes for today and earlier days")
     }
     return date
   }
@@ -694,7 +694,7 @@ public enum CLI {
       let url = date == "today" ? "noterepo://today" : "noterepo://day/\(date)"
       let app = context.runningApp()
       guard context.open(app.map { ["-a", $0, url] } ?? ["-b", bundleID, url]) else {
-        throw CLIError(message: "Could not open NoteRepo. Is it installed?")
+        throw CLIError(message: "Could not open Note Repo. Is it installed?")
       }
       return .object(["opened": .string(date == "today" ? Day.today : date), "app": .string(app ?? bundleID)])
     },
@@ -728,7 +728,7 @@ public enum CLI {
       do {
         try store.restore(from: URL(fileURLWithPath: resolved))
       } catch {
-        throw CLIError(message: "\(database) isn't a NoteRepo database. Your notes are unchanged")
+        throw CLIError(message: "\(database) isn't a Note Repo database. Your notes are unchanged")
       }
       return .object([
         "restored": JSON.object(["database": .string(resolved)]).merging(try statsJSON(store)), "backup": saved,

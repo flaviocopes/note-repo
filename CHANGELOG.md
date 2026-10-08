@@ -1,6 +1,11 @@
 # Changelog
 
-Every NoteRepo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/noterepo/releases).
+Every Note Repo release, newest first. Downloads are on the [releases page](https://github.com/flaviocopes/note-repo/releases).
+
+## 2.5.0 (October 8, 2026)
+
+- Renamed the app to Note Repo.
+- Updated its GitHub repository, app bundle and download names. Existing saved data and commands still work.
 
 ## 2.4.0 (October 7, 2026)
 
@@ -15,31 +20,31 @@ Every NoteRepo release, newest first. Downloads are on the [releases page](https
 
 ## 2.2.0 (October 3, 2026)
 
-- **Signed and notarized.** NoteRepo is now signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS no longer says it "could not verify NoteRepo is free of malware", so you don't need **Open Anyway** or Terminal. It asks the usual question about opening an app downloaded from the internet, and you click **Open**.
+- **Signed and notarized.** Note Repo is now signed with my Apple Developer ID and notarized by Apple. The first time you open it, macOS no longer says it "could not verify Note Repo is free of malware", so you don't need **Open Anyway** or Terminal. It asks the usual question about opening an app downloaded from the internet, and you click **Open**.
 - Nothing else changed. Your notes, the `noterepo` CLI and the link to it stay the same.
 
 ## 2.1.0 (September 30, 2026)
 
-- **Updates from inside the app.** Once a day, NoteRepo asks GitHub for a newer version. When there is one, it shows what's new, and **Install and Relaunch** puts it in place of the old app. **NoteRepo → Check for Updates…** checks right away. 2.1 is the last version you install by hand.
+- **Updates from inside the app.** Once a day, Note Repo asks GitHub for a newer version. When there is one, it shows what's new, and **Install and Relaunch** puts it in place of the old app. **Note Repo → Check for Updates…** checks right away. 2.1 is the last version you install by hand.
 - **Several lines in one item.** `⌥Return` starts a new line inside the same item, instead of a new item. It's saved as `<br>`, so each item is still one line of Markdown, and the `noterepo` CLI reads and writes it the same way.
 - **Search results stay in their panel.** A search with many matches used to spill its results over the sidebar and the window buttons. Now they scroll inside the panel.
 - **The cursor on an empty item.** On an empty last item, the blinking cursor was shorter than the line and sat too high. Now it lines up with the bullet.
 
 ## 2.0.0 (September 30, 2026)
 
-NoteRepo is now a native Mac app written in Swift. It looks and works like 1.2, opens the same notes, and replaces the Electron version.
+Note Repo is now a native Mac app written in Swift. It looks and works like 1.2, opens the same notes, and replaces the Electron version.
 
 - **A native app.** SwiftUI draws the window, the sidebar and search, and each day is an AppKit text view. The download went from 122 MB to 1.5 MB. On the same notes, the app uses about 70 MB of memory instead of 190 MB, in one process instead of five.
 - **Intel Macs.** The app is universal, so it runs on Intel Macs as well as Apple silicon. It needs macOS 14 or later.
 - **A native `noterepo`.** The command-line tool is now a Swift program. Its commands, options and JSON output are the same as in 1.2, and it lives in the same place inside the app, so your links and your agents' scripts keep working. It doesn't need the Node.js runtime anymore.
-- **X post previews drawn by the app.** NoteRepo reads the post's author, text, photo and counts from X's public embed service and draws the card itself, in light and dark, instead of loading X's embed script.
+- **X post previews drawn by the app.** Note Repo reads the post's author, text, photo and counts from X's public embed service and draws the card itself, in light and dark, instead of loading X's embed script.
 - **Your notes come along.** 2.0 reads and writes the same `notes.sqlite3` file, so updating means replacing the app.
 - **No more Reflect importer.** It was a script in the repository, not part of the app.
 
 A few things are different:
 
 - To move an image to another day, cut and paste it. Dragging images between days isn't tested in the native editor yet.
-- NoteRepo no longer imports the `notes.json` file used by its first development builds.
+- Note Repo no longer imports the `notes.json` file used by its first development builds.
 
 ## 1.2.0 (September 30, 2026)
 

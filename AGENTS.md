@@ -1,4 +1,4 @@
-# NoteRepo
+# Note Repo
 
 A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents. Both read and write `~/Library/Application Support/NoteRepo/notes.sqlite3`.
 
@@ -25,20 +25,20 @@ A daily notes app for macOS, written in Swift, with a `noterepo` CLI for agents.
 
 ```sh
 swift test                                   # unit tests
-scripts/build.sh                             # build/NoteRepo.app, universal, with the CLI inside, Developer ID signed when the certificate is in the keychain
-open build/NoteRepo.app                      # run it on the real notes
-build/NoteRepo.app/Contents/Resources/bin/noterepo help
-scripts/notarize.sh                          # build, notarize, staple, and write dist/NoteRepo-<version>.zip
+scripts/build.sh                             # build/Note Repo.app, universal, with the CLI inside, Developer ID signed when the certificate is in the keychain
+open "build/Note Repo.app"                      # run it on the real notes
+"build/Note Repo.app/Contents/Resources/bin/noterepo" help
+scripts/notarize.sh                          # build, notarize, staple, and write dist/Note-Repo-<version>.zip
 ```
 
 ## Rules
 
-- After every code or configuration change, run `swift test` and `scripts/build.sh`. Then quit the running NoteRepo (`osascript -e 'tell application id "com.flaviocopes.noterepo" to quit'`), open the new build, and check it's the new version before reporting completion.
+- After every code or configuration change, run `swift test` and `scripts/build.sh`. Then quit the running Note Repo (`osascript -e 'tell application id "com.flaviocopes.noterepo" to quit'`), open the new build, and check it's the new version before reporting completion.
 - The user's notes never go into the repo, screenshots or demos. For screenshots, demos and experiments, launch with `--args --user-data-dir <temp folder>` and pair the CLI with `--data-dir` on the same folder.
 - Check editor changes with the self-test, on a temporary folder:
-  `open -W --stdout /tmp/noterepo-check.log build/NoteRepo.app --args --user-data-dir /tmp/noterepo-check --self-test`
+  `open -W --stdout /tmp/noterepo-check.log "build/Note Repo.app" --args --user-data-dir /tmp/noterepo-check --self-test`
   Launch it with `open`, so the app is active and ⌘Z reaches the Edit menu. Add a check to `SelfTest.swift` for any new editing behavior.
-- Quit NoteRepo before any `open ... --args` launch. If it's already running, `open` only brings it forward and drops the arguments, so `open -W` hangs. Opening it right after it quits, or right after a self-test exits, can fail with error -600, so wait a second and retry.
+- Quit Note Repo before any `open ... --args` launch. If it's already running, `open` only brings it forward and drops the arguments, so `open -W` hangs. Opening it right after it quits, or right after a self-test exits, can fail with error -600, so wait a second and retry.
 - Agents can't send keystrokes through System Events here. Drive the editor from `SelfTest.swift`, or with `--automation` commands like `swift scripts/send.swift command today`.
 - Before changing how days are read or saved, back up with `noterepo backup`, then run `--round-trip` on that copy. It must report 0 days that differ.
 - For screenshots, launch with `--automation` and run `swift scripts/send.swift snapshot /tmp/shot.png`. The app captures its own window, so it needs no screen recording permission.
@@ -48,3 +48,9 @@ scripts/notarize.sh                          # build, notarize, staple, and writ
 - Releases are signed with Flavio's Developer ID (team `DGFKNTAG99`) with the hardened runtime, and notarized by `scripts/notarize.sh`. It needs the certificate in the keychain and a notarytool keychain profile named `notary`, and it refuses an ad-hoc build. CI and forks have no certificate, so `scripts/build.sh` signs ad-hoc there. Every release gets a section in `CHANGELOG.md`, newest first.
 - Releases are minor by default (2.3.0): new features, changes people notice like the move to notarization, and bug fixes people care about. A point release (2.2.1) is only for really unimportant stuff. The `open-source-release` skill has the rule.
 - The updater trusts the GitHub release. Every release needs its `vX.Y.Z` tag, the zip from `scripts/notarize.sh` attached, and a version in `Version.swift` that matches the tag, or the app refuses the update. It shows the release notes up to the first `## Install` heading, so put what's new first.
+
+For README images, use the app’s `--automation` snapshot helper in the test VM on generated notes, then run `swift scripts/render-banner.swift` for both banner appearances.
+
+## Naming compatibility
+
+The public app name is Note Repo. Keep its existing bundle ID, saved data paths, URL schemes, CLI commands and internal Swift targets so installed copies and agent integrations remain compatible. Use the renamed checkout folder and GitHub repository in new links and build instructions.

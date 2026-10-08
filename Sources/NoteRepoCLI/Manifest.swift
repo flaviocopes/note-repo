@@ -24,7 +24,7 @@ enum Manifest {
   static let current = Document(
     name: "noterepo",
     version: NoteRepoVersion.current,
-    summary: "Reads and writes daily notes in NoteRepo's SQLite file, with JSON on every command, while the app is open or not.",
+    summary: "Reads and writes daily notes in Note Repo's SQLite file, with JSON on every command, while the app is open or not.",
     capabilities: [
       Capability(
         description: "Show every item on a day as JSON",
@@ -63,11 +63,12 @@ enum Manifest {
         command: "noterepo backup"
       ),
       Capability(
-        description: "Bring NoteRepo to the front on a day",
+        description: "Bring Note Repo to the front on a day",
         command: "noterepo open today"
       ),
     ],
     changelog: [
+      Release(version: "2.5.0", date: "2026-10-08", changes: ["Renamed the app to Note Repo. Existing commands and saved data still work."]),
       Release(
         version: "2.4.0", date: "2026-10-07",
         changes: [
@@ -110,7 +111,7 @@ enum Manifest {
       ),
       Release(
         version: "1.0.0", date: "2026-09-29",
-        changes: ["First public release of the NoteRepo daily notes app."]
+        changes: ["First public release of the Note Repo daily notes app."]
       ),
     ]
   )
