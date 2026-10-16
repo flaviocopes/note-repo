@@ -229,7 +229,41 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
 
   private func updateTypingAttributes() {
     guard let index = currentIndex else { return }
-    typingAttributes = NoteFormat.attributes(paragraphs[index].style)
+    var attributes = NoteFormat.attributes(paragraphs[index].style)
+    if let storage = textStorage, storage.length > 0, paragraphs[index].range.length > 0 {
+      let location = min(storage.length - 1, max(paragraphs[index].range.location, selectedRange().location - 1))
+      attributes[.font] = storage.attribute(.font, at: location, effectiveRange: nil)
+    }
+    typingAttributes = attributes
+  }
+
+  @objc func toggleBold(_ sender: Any?) {
+    guard isEditable, let storage = textStorage else { return }
+    let selection = selectedRange()
+    if selection.length == 0 {
+      typingAttributes[.font] = NoteFormat.isBold(typingAttributes[.font]) ? NoteFormat.font : NoteFormat.boldFont
+      return
+    }
+    var allBold = true
+    storage.enumerateAttribute(.font, in: selection) { font, _, _ in
+      if !NoteFormat.isBold(font) { allBold = false }
+    }
+    let text = NSMutableAttributedString(attributedString: storage.attributedSubstring(from: selection))
+    text.addAttribute(.font, value: allBold ? NoteFormat.font : NoteFormat.boldFont,
+      range: NSRange(location: 0, length: text.length))
+    setInlineText(text, in: selection)
+  }
+
+  private func setInlineText(_ text: NSAttributedString, in range: NSRange) {
+    guard let storage = textStorage else { return }
+    breakUndoCoalescing()
+    let previous = storage.attributedSubstring(from: range)
+    undoManager?.registerUndo(withTarget: self) { $0.setInlineText(previous, in: range) }
+    storage.replaceCharacters(in: range, with: text)
+    didChangeText()
+    setSelectedRange(range)
+    updateTypingAttributes()
+    undoManager?.setActionName("Bold")
   }
 
   // MARK: Drawing

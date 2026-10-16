@@ -22,6 +22,12 @@ struct ListStyle: Equatable {
 
 enum NoteFormat {
   static let font = Theme.mono(13)
+  static let boldFont = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+
+  static func isBold(_ font: Any?) -> Bool {
+    guard let font = font as? NSFont else { return false }
+    return NSFontManager.shared.traits(of: font).contains(.boldFontMask)
+  }
   static let lineHeight: CGFloat = 22.1
   static let indent: CGFloat = 16.9
   static let listPadding: CGFloat = 14.95
@@ -123,24 +129,43 @@ enum NoteFormat {
         result.append(image)
       }
     }
+    let bold = try! NSRegularExpression(pattern: #"\*\*([^\n]+?)\*\*"#)
+    for match in bold.matches(in: result.string, range: NSRange(location: 0, length: result.length)).reversed() {
+      result.addAttribute(.font, value: boldFont, range: match.range(at: 1))
+      result.deleteCharacters(in: NSRange(location: NSMaxRange(match.range) - 2, length: 2))
+      result.deleteCharacters(in: NSRange(location: match.range.location, length: 2))
+    }
     return result
   }
 
   static func inlineMarkdown(_ text: NSAttributedString, _ range: NSRange) -> String {
     var markdown = ""
     let source = text.string as NSString
-    text.enumerateAttribute(.link, in: range) { value, run, _ in
-      let label = source.substring(with: run)
-      if let url = (value as? String) ?? (value as? URL)?.absoluteString {
-        let clean = label.replacingOccurrences(of: "\u{fffc}", with: "")
-        markdown += clean == url ? url : "[\(Links.cleanTitle(clean))](\(url))"
-        return
+    text.enumerateAttribute(.font, in: range) { font, fontRange, _ in
+      let bold = isBold(font)
+      let start = markdown.endIndex
+      text.enumerateAttribute(.link, in: fontRange) { value, run, _ in
+        let label = source.substring(with: run)
+        if let url = (value as? String) ?? (value as? URL)?.absoluteString {
+          let clean = label.replacingOccurrences(of: "\u{fffc}", with: "")
+          markdown += !bold && clean == url ? url : "[\(Links.cleanTitle(clean))](\(url))"
+          return
+        }
+        text.enumerateAttribute(.attachment, in: run) { attachment, piece, _ in
+          if let attachment = attachment as? NoteAttachment {
+            markdown += attachment.markdown
+          } else {
+            markdown += source.substring(with: piece).replacingOccurrences(of: "\u{fffc}", with: "")
+          }
+        }
       }
-      text.enumerateAttribute(.attachment, in: run) { attachment, piece, _ in
-        if let attachment = attachment as? NoteAttachment {
-          markdown += attachment.markdown
-        } else {
-          markdown += source.substring(with: piece).replacingOccurrences(of: "\u{fffc}", with: "")
+      if bold {
+        let piece = String(markdown[start...])
+        let content = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !content.isEmpty {
+          let leading = piece.prefix(while: { $0.isWhitespace })
+          let trailing = String(piece.reversed().prefix(while: { $0.isWhitespace }).reversed())
+          markdown.replaceSubrange(start..., with: "\(leading)**\(content)**\(trailing)")
         }
       }
     }

@@ -61,6 +61,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 
 | Shortcut | Action |
 | --- | --- |
+| `⌘B` | Toggle bold for selected text or new typing |
 | `⌘D` | Go back to today and start writing |
 | `⌘F` / `⌘K` | Search your notes |
 | `⌥↑` / `⌥↓` | Move to the previous or next day |

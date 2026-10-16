@@ -51,6 +51,10 @@ struct NoteRepoApp: App {
       }
       CommandGroup(replacing: .newItem) {}
       CommandGroup(replacing: .textEditing) {}
+      CommandMenu("Format") {
+        Button("Bold") { NSApp.sendAction(#selector(NoteTextView.toggleBold(_:)), to: nil, from: nil) }
+          .keyboardShortcut("b")
+      }
       CommandMenu("Go") {
         Button("Today") { model.focusToday() }
           .keyboardShortcut("d")
