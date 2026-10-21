@@ -77,6 +77,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   private(set) var paragraphs: [Paragraph] = []
   private var paragraphStarts: [Int: Int] = [:]
   private var hoveredMarker: Int?
+  var hoveredImage: Int?
   private var markerTracking: NSTrackingArea?
 
   static func make() -> NoteTextView {
@@ -193,6 +194,11 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     paragraphs = result
     paragraphStarts = starts
     if let hoveredMarker, !paragraphs.indices.contains(hoveredMarker) { self.hoveredMarker = nil }
+    if let hoveredImage, hoveredImage >= storage.length
+      || !(storage.attribute(.attachment, at: hoveredImage, effectiveRange: nil) is ImageAttachment)
+    {
+      self.hoveredImage = nil
+    }
     needsDisplay = true
     window?.invalidateCursorRects(for: self)
   }
@@ -369,7 +375,12 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   override func cursorUpdate(with event: NSEvent) {
-    if markerIndex(at: convert(event.locationInWindow, from: nil)) != nil {
+    let point = convert(event.locationInWindow, from: nil)
+    if refreshImageHover(at: point) {
+      NSCursor.resizeLeftRight.set()
+      return
+    }
+    if markerIndex(at: point) != nil {
       NSCursor.pointingHand.set()
       return
     }
@@ -377,7 +388,16 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   override func mouseMoved(with event: NSEvent) {
-    let index = markerIndex(at: convert(event.locationInWindow, from: nil))
+    let point = convert(event.locationInWindow, from: nil)
+    if refreshImageHover(at: point) {
+      if hoveredMarker != nil {
+        hoveredMarker = nil
+        needsDisplay = true
+      }
+      NSCursor.resizeLeftRight.set()
+      return
+    }
+    let index = markerIndex(at: point)
     if index != hoveredMarker {
       hoveredMarker = index
       needsDisplay = true
@@ -390,8 +410,9 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   override func mouseExited(with event: NSEvent) {
-    if hoveredMarker != nil {
+    if hoveredMarker != nil || hoveredImage != nil {
       hoveredMarker = nil
+      hoveredImage = nil
       needsDisplay = true
     }
     super.mouseExited(with: event)
@@ -408,26 +429,44 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     super.mouseDown(with: event)
   }
 
-  /// AppKit does not always hand a click on an attachment to the cell. A second press on the corner
-  /// of an already selected image starts the resize from here.
+  /// A press near the corner starts the resize. AppKit does not always hand that click to the cell.
   private func trackSelectedImage(with event: NSEvent, at point: NSPoint) -> Bool {
-    guard isEditable, let layoutManager, let textContainer, let storage = textStorage else { return false }
-    layoutManager.ensureLayout(for: textContainer)
-    let origin = textContainerOrigin
-    let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
-    let glyph = layoutManager.glyphIndex(for: local, in: textContainer)
-    let character = layoutManager.characterIndexForGlyph(at: glyph)
-    guard character < storage.length,
+    guard let character = imageHandle(at: point), let storage = textStorage, character < storage.length,
       let image = storage.attribute(.attachment, at: character, effectiveRange: nil) as? ImageAttachment,
-      let cell = image.attachmentCell as? ImageCell
-    else { return false }
-    var rect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer)
-    rect.origin.x += origin.x
-    rect.origin.y += origin.y
-    guard rect.contains(point), selectedRange() == NSRange(location: character, length: 1),
-      ImageCell.handleRect(in: rect).contains(point)
+      let cell = image.attachmentCell as? ImageCell,
+      let rect = ImageCell.drawnFrame(in: self, character: character)
     else { return false }
     return cell.trackMouse(with: event, in: rect, of: self, atCharacterIndex: character, untilMouseUp: true)
+  }
+
+  private func refreshImageHover(at point: NSPoint) -> Bool {
+    let handle = imageHandle(at: point)
+    guard handle != hoveredImage else { return handle != nil }
+    let previous = hoveredImage
+    hoveredImage = handle
+    if let layoutManager {
+      if let previous, previous < (textStorage?.length ?? 0) {
+        layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: previous, length: 1))
+      }
+      if let handle {
+        layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: handle, length: 1))
+      }
+    }
+    needsDisplay = true
+    return handle != nil
+  }
+
+  private func imageHandle(at point: NSPoint) -> Int? {
+    guard isEditable, let storage = textStorage, storage.length > 0 else { return nil }
+    var found: Int?
+    storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
+      guard value is ImageAttachment, let frame = ImageCell.drawnFrame(in: self, character: range.location),
+        ImageCell.handleHitRect(in: frame).contains(point)
+      else { return }
+      found = range.location
+      stop.pointee = true
+    }
+    return found
   }
 
   override func resetCursorRects() {
@@ -453,13 +492,10 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   private func addImageHandleCursor() {
-    guard isEditable, let storage = textStorage else { return }
-    let selection = selectedRange()
-    guard selection.length == 1,
-      storage.attribute(.attachment, at: selection.location, effectiveRange: nil) is ImageAttachment
-    else { return }
-    if let rect = ImageCell.drawnFrame(in: self, character: selection.location) {
-      addCursorRect(ImageCell.handleRect(in: rect), cursor: .resizeLeftRight)
+    guard isEditable, let storage = textStorage, storage.length > 0 else { return }
+    storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+      guard value is ImageAttachment, let rect = ImageCell.drawnFrame(in: self, character: range.location) else { return }
+      self.addCursorRect(ImageCell.handleHitRect(in: rect), cursor: .resizeLeftRight)
     }
   }
 

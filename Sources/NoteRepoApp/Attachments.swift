@@ -116,9 +116,16 @@ final class ImageCell: NSTextAttachmentCell {
   override func cellBaselineOffset() -> NSPoint { .zero }
   override func wantsToTrackMouse() -> Bool { true }
 
+  /// The circle drawn at the corner. The grab area is larger, so a click near it still resizes.
   static func handleRect(in frame: NSRect) -> NSRect {
     let side = min(22, frame.width, frame.height)
     return NSRect(x: frame.maxX - side, y: frame.maxY - side, width: side, height: side)
+  }
+
+  static func handleHitRect(in frame: NSRect) -> NSRect {
+    let knob = handleRect(in: frame)
+    let side: CGFloat = 44
+    return NSRect(x: knob.midX - side / 2, y: knob.midY - side / 2, width: side, height: side)
   }
 
   /// The rectangle the image is drawn in, in the text view's coordinates. The frame AppKit passes to
@@ -142,10 +149,9 @@ final class ImageCell: NSTextAttachmentCell {
     guard let textView = controlView as? NoteTextView, let owner else { return false }
     textView.window?.makeFirstResponder(textView)
     let point = textView.convert(theEvent.locationInWindow, from: nil)
-    let selected = textView.selectedRange() == NSRange(location: charIndex, length: 1)
     textView.setSelectedRange(NSRange(location: charIndex, length: 1))
     let drawn = Self.drawnFrame(in: textView, character: charIndex) ?? cellFrame
-    if selected && textView.isEditable && Self.handleRect(in: drawn).contains(point) {
+    if textView.isEditable && Self.handleHitRect(in: drawn).contains(point) {
       resize(from: theEvent, index: charIndex, textView: textView, owner: owner)
       return true
     }
@@ -190,13 +196,14 @@ final class ImageCell: NSTextAttachmentCell {
     withFrame cellFrame: NSRect, in controlView: NSView?, characterIndex charIndex: Int,
     layoutManager: NSLayoutManager
   ) {
-    let textView = controlView as? NSTextView
+    let textView = controlView as? NoteTextView
     let selection = textView?.selectedRange() ?? NSRange(location: 0, length: 0)
     let selected = selection.length > 0 && NSLocationInRange(charIndex, selection)
-    draw(cellFrame, selected: selected, resizable: selected && textView?.isEditable == true)
+    let hovered = textView?.hoveredImage == charIndex
+    draw(cellFrame, selected: selected, showHandle: textView?.isEditable == true && (selected || hovered))
   }
 
-  private func draw(_ frame: NSRect, selected: Bool, resizable: Bool = false) {
+  private func draw(_ frame: NSRect, selected: Bool, showHandle: Bool = false) {
     guard let owner else { return }
     let rect = frame.insetBy(dx: 0.5, dy: 0.5)
     let shape = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
@@ -224,7 +231,7 @@ final class ImageCell: NSTextAttachmentCell {
       Theme.accentGlow.setStroke()
       ring.stroke()
     }
-    if resizable { drawHandle(in: frame) }
+    if showHandle { drawHandle(in: frame) }
   }
 
   private func drawHandle(in frame: NSRect) {

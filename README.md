@@ -51,7 +51,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Pasted text is cleaned of stray blank lines, trailing spaces, and invisible characters
 - X and Twitter links show the first line of the post
 - Images added by dragging a file into a day or pasting from the clipboard
-- Select an image and drag its corner to resize it. You can also cut, paste and delete it
+- Hover an image's corner and drag to resize it. The handle shows as you approach, and you can grab beside the circle. You can also cut, paste and delete it
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 
