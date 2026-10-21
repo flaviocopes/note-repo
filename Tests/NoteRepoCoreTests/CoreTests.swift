@@ -31,11 +31,11 @@ import Testing
   #expect(items[0].starred && items[0].text == "Buy milk")
   #expect(!items[1].starred && items[1].text == "Bread")
   #expect(items[2].starred && items[2].text == "![Shot](noterepo:image:\(image))")
-  guard case .image(let id, let alt) = items[2].kind else {
+  guard case .image(let id, let alt, let width) = items[2].kind else {
     Issue.record("a starred image is still an image")
     return
   }
-  #expect(id == image && alt == "Shot")
+  #expect(id == image && alt == "Shot" && width == nil)
   #expect(Outline.normalized(Outline.parse("- ★ Buy milk")) == "- ★ Buy milk")
   #expect(Outline.withStar("", starred: true) == "★")
   #expect(Outline.splitStar("★") == (starred: true, text: ""))
@@ -66,8 +66,26 @@ import Testing
   #expect(
     tokens == [
       .text("Read "), .link(title: "WAL", url: "https://sqlite.org/wal.html"), .text(" (sqlite.org), see "),
-      .link(title: nil, url: "https://flaviocopes.com"), .text("."), .text(" "), .image(id: id, alt: "Shot"),
+      .link(title: nil, url: "https://flaviocopes.com"), .text("."), .text(" "), .image(id: id, alt: "Shot", width: nil),
     ])
+}
+
+@Test func readsAResizedImage() {
+  let id = String(repeating: "b", count: 64)
+  let sized = Links.imageItem("![Shot](noterepo:image:\(id) =240)")
+  #expect(sized?.id == id && sized?.alt == "Shot" && sized?.width == 240)
+  #expect(Links.imageItem("![Shot](noterepo:image:\(id))")?.width == nil)
+  #expect(Links.imageMarkdown(alt: "Shot", id: id, width: 240) == "![Shot](noterepo:image:\(id) =240)")
+  #expect(Links.imageMarkdown(alt: "Shot", id: id, width: nil) == "![Shot](noterepo:image:\(id))")
+  let items = Outline.describe(Outline.parse("- ![Shot](noterepo:image:\(id) =240)"))
+  guard case .image(let parsed, let alt, let width) = items[0].kind else {
+    Issue.record("a sized image is still an image")
+    return
+  }
+  #expect(parsed == id && alt == "Shot" && width == 240)
+  #expect(
+    Links.tokens("See ![Shot](noterepo:image:\(id) =80) now")
+      == [.text("See "), .image(id: id, alt: "Shot", width: 80), .text(" now")])
 }
 
 @Test func recognizesSpecialLinks() {

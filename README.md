@@ -51,7 +51,7 @@ defaults write com.flaviocopes.noterepo AppUpdaterAutomaticChecks -bool false
 - Pasted text is cleaned of stray blank lines, trailing spaces, and invisible characters
 - X and Twitter links show the first line of the post
 - Images added by dragging a file into a day or pasting from the clipboard
-- Image items you can select and delete, or cut and paste into another day
+- Select an image and drag its corner to resize it. You can also cut, paste and delete it
 - Light and dark appearance following the macOS setting
 - A [`noterepo` command-line tool](#use-it-from-the-command-line) that coding agents use to read and write your notes
 
@@ -180,6 +180,8 @@ noterepo title https://sqlite.org/wal.html
 ```sh
 noterepo image ~/Desktop/receipt.png --date yesterday
 ```
+
+A resized image is saved as `![receipt.png](noterepo:image:<id> =320)`. `show` includes `"width": 320` for it. Drag the image back to its fitted size and the width is left off.
 
 ### Change items
 

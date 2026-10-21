@@ -123,9 +123,11 @@ enum NoteFormat {
         var linkAttributes = attributes
         linkAttributes[.link] = url
         result.append(NSAttributedString(string: title ?? url, attributes: linkAttributes))
-      case .image(let id, let alt):
-        let image = NSMutableAttributedString(attachment: ImageAttachment(id: id, alt: alt, store: store))
-        image.addAttributes(attributes, range: NSRange(location: 0, length: image.length))
+      case .image(let id, let alt, let width):
+        let image = NSMutableAttributedString(attachment: ImageAttachment(id: id, alt: alt, width: width, store: store))
+        var safe = attributes
+        safe[.attachment] = nil
+        image.addAttributes(safe, range: NSRange(location: 0, length: image.length))
         result.append(image)
       }
     }

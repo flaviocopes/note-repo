@@ -191,11 +191,11 @@ let htmxTitle = #"{"title": "htmx: Simplicity in an Age of Complicated Solutions
     return
   }
   #expect(links.map(\.title) == ["Write-Ahead Logging"] && links.map(\.url) == ["https://sqlite.org/wal.html"])
-  guard case .image(let id, let alt) = items[2].kind else {
+  guard case .image(let id, let alt, let width) = items[2].kind else {
     Issue.record("item 3 isn't an image")
     return
   }
-  #expect(id == image && alt == "Screenshot")
+  #expect(id == image && alt == "Screenshot" && width == nil)
   guard case .link(let links) = items[3].kind else {
     Issue.record("item 4 isn't a link")
     return

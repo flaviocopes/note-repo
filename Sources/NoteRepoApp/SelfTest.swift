@@ -264,6 +264,18 @@ enum SelfTest {
     check("the image is stored", view.paragraphs.contains { ($0.attachment as? ImageAttachment)?.entry.image != nil })
 
     if let index = view.paragraphs.firstIndex(where: { $0.attachment is ImageAttachment }) {
+      await wait(0.2)
+      view.resizeImage(at: index, to: 120)
+      let resized = view.paragraphs[index].attachment as? ImageAttachment
+      check(
+        "resizing an image saves its width",
+        view.markdown.contains(" =120)") && resized?.savedWidth == 120 && resized?.displaySize.width == 120,
+        view.markdown)
+      await undo(view)
+      check(
+        "undo restores the image size",
+        view.markdown.contains("noterepo:image:") && !view.markdown.contains(" ="), view.markdown)
+
       await press("\u{f703}", keyCode: 124)
       view.setSelectedRange(view.paragraphs[index].range)
       await press("\u{7f}", keyCode: 51)

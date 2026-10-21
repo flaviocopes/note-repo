@@ -398,12 +398,36 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   }
 
   override func mouseDown(with event: NSEvent) {
-    if let index = markerIndex(at: convert(event.locationInWindow, from: nil)) {
+    let point = convert(event.locationInWindow, from: nil)
+    if let index = markerIndex(at: point) {
       window?.makeFirstResponder(self)
       toggleStar(at: index)
       return
     }
+    if trackSelectedImage(with: event, at: point) { return }
     super.mouseDown(with: event)
+  }
+
+  /// AppKit does not always hand a click on an attachment to the cell. A second press on the corner
+  /// of an already selected image starts the resize from here.
+  private func trackSelectedImage(with event: NSEvent, at point: NSPoint) -> Bool {
+    guard isEditable, let layoutManager, let textContainer, let storage = textStorage else { return false }
+    layoutManager.ensureLayout(for: textContainer)
+    let origin = textContainerOrigin
+    let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+    let glyph = layoutManager.glyphIndex(for: local, in: textContainer)
+    let character = layoutManager.characterIndexForGlyph(at: glyph)
+    guard character < storage.length,
+      let image = storage.attribute(.attachment, at: character, effectiveRange: nil) as? ImageAttachment,
+      let cell = image.attachmentCell as? ImageCell
+    else { return false }
+    var rect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer)
+    rect.origin.x += origin.x
+    rect.origin.y += origin.y
+    guard rect.contains(point), selectedRange() == NSRange(location: character, length: 1),
+      ImageCell.handleRect(in: rect).contains(point)
+    else { return false }
+    return cell.trackMouse(with: event, in: rect, of: self, atCharacterIndex: character, untilMouseUp: true)
   }
 
   override func resetCursorRects() {
@@ -425,6 +449,75 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
       addCursorRect(
         markerRect(paragraphs[index], line: layoutManager.extraLineFragmentRect, origin: origin), cursor: NSCursor.pointingHand)
     }
+    addImageHandleCursor()
+  }
+
+  private func addImageHandleCursor() {
+    guard isEditable, let storage = textStorage else { return }
+    let selection = selectedRange()
+    guard selection.length == 1,
+      storage.attribute(.attachment, at: selection.location, effectiveRange: nil) is ImageAttachment
+    else { return }
+    if let rect = ImageCell.drawnFrame(in: self, character: selection.location) {
+      addCursorRect(ImageCell.handleRect(in: rect), cursor: .resizeLeftRight)
+    }
+  }
+
+  func relayoutImage(at character: Int) {
+    guard let storage = textStorage, let layoutManager, character < storage.length else { return }
+    let range = NSRange(location: character, length: 1)
+    layoutManager.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
+    layoutManager.invalidateDisplay(forCharacterRange: range)
+    needsDisplay = true
+    owner?.textLayoutChanged()
+    window?.invalidateCursorRects(for: self)
+  }
+
+  func commitImageSize(at character: Int) {
+    guard isEditable, let storage = textStorage, let container = textContainer, character < storage.length,
+      let image = storage.attribute(.attachment, at: character, effectiveRange: nil) as? ImageAttachment
+    else { return }
+    let available = NoteAttachment.availableWidth(container, character)
+    let shown = image.displaySize.width
+    let natural = image.size(available: available, width: nil).width
+    let width = abs(shown - natural) <= 2 ? nil : Int(shown.rounded())
+    if width == image.savedWidth {
+      image.displayWidth = image.savedWidth.map { CGFloat($0) }
+      relayoutImage(at: character)
+      return
+    }
+    replaceImage(at: character, width: width, image: image)
+  }
+
+  func resizeImage(at index: Int, to width: Int) {
+    guard isEditable, paragraphs.indices.contains(index), let image = paragraphs[index].attachment as? ImageAttachment,
+      let container = textContainer
+    else { return }
+    let character = paragraphs[index].range.location
+    let available = NoteAttachment.availableWidth(container, character)
+    let shown = image.size(available: available, width: CGFloat(width)).width
+    let natural = image.size(available: available, width: nil).width
+    let stored = abs(shown - natural) <= 2 ? nil : Int(shown.rounded())
+    replaceImage(at: character, width: stored, image: image)
+  }
+
+  private func replaceImage(at character: Int, width: Int?, image: ImageAttachment) {
+    guard width != image.savedWidth else { return }
+    let previousWidth = image.savedWidth
+    breakUndoCoalescing()
+    undoManager?.registerUndo(withTarget: self) { view in
+      guard let storage = view.textStorage, character < storage.length,
+        let current = storage.attribute(.attachment, at: character, effectiveRange: nil) as? ImageAttachment
+      else { return }
+      view.replaceImage(at: character, width: previousWidth, image: current)
+    }
+    image.savedWidth = width
+    image.displayWidth = width.map { CGFloat($0) }
+    relayoutImage(at: character)
+    owner?.textChanged()
+    setSelectedRange(NSRange(location: character, length: 1))
+    undoManager?.setActionName("Resize Image")
+    breakUndoCoalescing()
   }
 
   override func viewDidChangeEffectiveAppearance() {
@@ -457,6 +550,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
   func textViewDidChangeSelection(_ notification: Notification) {
     updateTypingAttributes()
     needsDisplay = true
+    window?.invalidateCursorRects(for: self)
   }
 
   override func becomeFirstResponder() -> Bool {
@@ -757,7 +851,7 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     for (offset, (id, alt)) in ids.enumerated() {
       if offset > 0 { items.append(NSAttributedString(string: "\n", attributes: NoteFormat.attributes(style))) }
       items.append(
-        NoteFormat.body("![\(alt)](noterepo:image:\(id))", attributes: NoteFormat.attributes(style), store: owner.store))
+        NoteFormat.body(Links.imageMarkdown(alt: alt, id: id, width: nil), attributes: NoteFormat.attributes(style), store: owner.store))
     }
     insertItems(items, style: style, after: index)
   }

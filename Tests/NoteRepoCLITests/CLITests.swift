@@ -147,6 +147,12 @@ final class XPostStub: URLProtocol {
   #expect(day["date"]?.string == Day.today)
   #expect(day["items"]![0]!["kind"]?.string == "image")
   #expect(day["items"]![0]!["image"]?["alt"]?.string == "screenshot.png")
+  #expect(day["items"]![0]!["image"]?["width"] == nil)
+  let imageID = day["items"]![0]!["image"]?["id"]?.string ?? ""
+  day = try await book.ok("edit", "1", "![screenshot.png](noterepo:image:\(imageID) =180)")
+  #expect(day["items"]![0]!["kind"]?.string == "image")
+  #expect(day["items"]![0]!["image"]?["width"]?.int == 180)
+  #expect(day["items"]![0]!["text"]?.string == "![screenshot.png](noterepo:image:\(imageID) =180)")
 
   let configuration = URLSessionConfiguration.ephemeral
   configuration.protocolClasses = [XPostStub.self]

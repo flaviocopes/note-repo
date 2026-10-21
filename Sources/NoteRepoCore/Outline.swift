@@ -26,7 +26,7 @@ public struct OutlineItem {
   public enum Kind {
     case text
     case link([(title: String?, url: String)])
-    case image(id: String, alt: String)
+    case image(id: String, alt: String, width: Int?)
   }
 
   public let n: Int
@@ -174,7 +174,7 @@ public enum Outline {
       n += 1
       let kind: OutlineItem.Kind
       if let image = Links.imageItem(text) {
-        kind = .image(id: image.id, alt: image.alt)
+        kind = .image(id: image.id, alt: image.alt, width: image.width)
       } else {
         let links = itemLinks(text)
         kind = links.isEmpty ? .text : .link(links)

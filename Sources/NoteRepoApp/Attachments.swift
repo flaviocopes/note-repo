@@ -49,13 +49,19 @@ enum ImageCache {
 }
 
 final class ImageAttachment: NoteAttachment {
+  static let minimumWidth: CGFloat = 64
+
   let imageID: String
   let alt: String
+  var savedWidth: Int?
   let entry: ImageCache.Entry
+  var displayWidth: CGFloat?
 
-  init(id: String, alt: String, store: NoteStore?) {
+  init(id: String, alt: String, width: Int?, store: NoteStore?) {
     imageID = id
     self.alt = alt
+    savedWidth = width
+    displayWidth = width.map { CGFloat($0) }
     entry = ImageCache.entry(id, store: store)
     super.init()
     attachmentCell = ImageCell(owner: self)
@@ -69,13 +75,21 @@ final class ImageAttachment: NoteAttachment {
     return clean.isEmpty ? "Image" : String(clean.prefix(240))
   }
 
-  override var markdown: String { "![\(ImageAttachment.cleanAlt(alt))](noterepo:image:\(imageID))" }
+  override var markdown: String { Links.imageMarkdown(alt: ImageAttachment.cleanAlt(alt), id: imageID, width: savedWidth) }
   override var verticalMargin: CGFloat { 8 }
 
-  func fittedSize(available: CGFloat) -> CGSize {
-    let size = entry.pixelSize
-    let scale = min(1, min(680, available) / size.width, 680 / size.height)
-    return CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+  func fittedSize(available: CGFloat) -> CGSize { size(available: available, width: displayWidth) }
+
+  /// `width` is the chosen display width. Nil keeps the image fitted to the column, never larger than its pixels.
+  func size(available: CGFloat, width: CGFloat?) -> CGSize {
+    let pixels = entry.pixelSize
+    let safeWidth = max(pixels.width, 1)
+    let safeHeight = max(pixels.height, 1)
+    let fitted = min(1, min(680, available) / safeWidth, 680 / safeHeight)
+    let natural = CGSize(width: max(1, (pixels.width * fitted).rounded()), height: max(1, (pixels.height * fitted).rounded()))
+    guard let width else { return natural }
+    let chosen = min(max(width.rounded(), Self.minimumWidth), max(available.rounded(), Self.minimumWidth))
+    return CGSize(width: chosen, height: max(1, (chosen * safeHeight / safeWidth).rounded()))
   }
 }
 
@@ -102,13 +116,39 @@ final class ImageCell: NSTextAttachmentCell {
   override func cellBaselineOffset() -> NSPoint { .zero }
   override func wantsToTrackMouse() -> Bool { true }
 
+  static func handleRect(in frame: NSRect) -> NSRect {
+    let side = min(22, frame.width, frame.height)
+    return NSRect(x: frame.maxX - side, y: frame.maxY - side, width: side, height: side)
+  }
+
+  /// The rectangle the image is drawn in, in the text view's coordinates. The frame AppKit passes to
+  /// tracking can sit away from that, so the corner handle is hit-tested against this one.
+  static func drawnFrame(in textView: NSTextView, character: Int) -> NSRect? {
+    guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer,
+      let storage = textView.textStorage, character < storage.length
+    else { return nil }
+    layoutManager.ensureLayout(for: textContainer)
+    let glyph = layoutManager.glyphIndexForCharacter(at: character)
+    var rect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer)
+    rect.origin.x += textView.textContainerOrigin.x
+    rect.origin.y += textView.textContainerOrigin.y
+    return rect.isEmpty ? nil : rect
+  }
+
   override func trackMouse(
     with theEvent: NSEvent, in cellFrame: NSRect, of controlView: NSView?, atCharacterIndex charIndex: Int,
     untilMouseUp flag: Bool
   ) -> Bool {
-    guard let textView = controlView as? NoteTextView else { return false }
+    guard let textView = controlView as? NoteTextView, let owner else { return false }
     textView.window?.makeFirstResponder(textView)
+    let point = textView.convert(theEvent.locationInWindow, from: nil)
+    let selected = textView.selectedRange() == NSRange(location: charIndex, length: 1)
     textView.setSelectedRange(NSRange(location: charIndex, length: 1))
+    let drawn = Self.drawnFrame(in: textView, character: charIndex) ?? cellFrame
+    if selected && textView.isEditable && Self.handleRect(in: drawn).contains(point) {
+      resize(from: theEvent, index: charIndex, textView: textView, owner: owner)
+      return true
+    }
     guard let window = textView.window else { return true }
     let start = theEvent.locationInWindow
     while let event = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
@@ -121,6 +161,27 @@ final class ImageCell: NSTextAttachmentCell {
     return true
   }
 
+  private func resize(from startEvent: NSEvent, index: Int, textView: NoteTextView, owner: ImageAttachment) {
+    guard let window = textView.window, let container = textView.textContainer else { return }
+    let start = textView.convert(startEvent.locationInWindow, from: nil)
+    let startWidth = owner.displaySize.width
+    var dragged = false
+    NSCursor.resizeLeftRight.push()
+    defer { NSCursor.pop() }
+    while let event = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+      if event.type == .leftMouseUp { break }
+      let point = textView.convert(event.locationInWindow, from: nil)
+      let dx = point.x - start.x
+      let dy = point.y - start.y
+      guard hypot(dx, dy) > 1 || dragged else { continue }
+      dragged = true
+      owner.displayWidth = startWidth + (abs(dx) >= abs(dy) ? dx : dy)
+      owner.displaySize = owner.fittedSize(available: NoteAttachment.availableWidth(container, index))
+      textView.relayoutImage(at: index)
+    }
+    if dragged { textView.commitImageSize(at: index) }
+  }
+
   override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
     draw(cellFrame, selected: false)
   }
@@ -129,11 +190,13 @@ final class ImageCell: NSTextAttachmentCell {
     withFrame cellFrame: NSRect, in controlView: NSView?, characterIndex charIndex: Int,
     layoutManager: NSLayoutManager
   ) {
-    let selection = (controlView as? NSTextView)?.selectedRange() ?? NSRange(location: 0, length: 0)
-    draw(cellFrame, selected: selection.length > 0 && NSLocationInRange(charIndex, selection))
+    let textView = controlView as? NSTextView
+    let selection = textView?.selectedRange() ?? NSRange(location: 0, length: 0)
+    let selected = selection.length > 0 && NSLocationInRange(charIndex, selection)
+    draw(cellFrame, selected: selected, resizable: selected && textView?.isEditable == true)
   }
 
-  private func draw(_ frame: NSRect, selected: Bool) {
+  private func draw(_ frame: NSRect, selected: Bool, resizable: Bool = false) {
     guard let owner else { return }
     let rect = frame.insetBy(dx: 0.5, dy: 0.5)
     let shape = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
@@ -161,5 +224,15 @@ final class ImageCell: NSTextAttachmentCell {
       Theme.accentGlow.setStroke()
       ring.stroke()
     }
+    if resizable { drawHandle(in: frame) }
+  }
+
+  private func drawHandle(in frame: NSRect) {
+    let knob = NSBezierPath(ovalIn: Self.handleRect(in: frame).insetBy(dx: 5, dy: 5))
+    Theme.popover.setFill()
+    knob.fill()
+    Theme.accent.setStroke()
+    knob.lineWidth = 1.5
+    knob.stroke()
   }
 }

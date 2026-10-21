@@ -21,15 +21,17 @@ extension NSRegularExpression {
 public enum InlineToken: Equatable, Sendable {
   case text(String)
   case link(title: String?, url: String)
-  case image(id: String, alt: String)
+  case image(id: String, alt: String, width: Int?)
 }
 
 public enum Links {
+  /// `![alt](noterepo:image:<id>)`, with an optional display width in points: ` =320`.
+  public static let imagePattern = #"!\[([^\]]*)\]\(noterepo:image:([a-f0-9]{64})(?: =(\d+))?\)"#
   static let inline = NSRegularExpression(
-    #"!\[([^\]]*)\]\(noterepo:image:([a-f0-9]{64})\)|\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://[^\s<>()\]]+)"#,
+    imagePattern + #"|\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://[^\s<>()\]]+)"#,
     .caseInsensitive)
   static let trailingPunctuation = NSRegularExpression(#"[.,;!?]+$"#)
-  static let imageItem = NSRegularExpression(#"^!\[([^\]]*)\]\(noterepo:image:([a-f0-9]{64})\)$"#, .caseInsensitive)
+  static let imageItem = NSRegularExpression("^\(imagePattern)$", .caseInsensitive)
 
   public static func tokens(_ body: String) -> [InlineToken] {
     var tokens: [InlineToken] = []
@@ -45,10 +47,10 @@ public enum Links {
         return range.location == NSNotFound ? nil : source.substring(with: range)
       }
       if let id = group(2) {
-        tokens.append(.image(id: id.lowercased(), alt: group(1) ?? ""))
-      } else if let url = group(4) {
-        tokens.append(.link(title: group(3), url: url))
-      } else if let raw = group(5) {
+        tokens.append(.image(id: id.lowercased(), alt: group(1) ?? "", width: imageWidth(group(3))))
+      } else if let url = group(5) {
+        tokens.append(.link(title: group(4), url: url))
+      } else if let raw = group(6) {
         let url = trimTrailingPunctuation(raw)
         tokens.append(.link(title: nil, url: url))
         if url.count < raw.count { tokens.append(.text(String(raw.dropFirst(url.count)))) }
@@ -63,10 +65,20 @@ public enum Links {
       in: value, range: NSRange(value.startIndex..., in: value), withTemplate: "")
   }
 
-  public static func imageItem(_ body: String) -> (id: String, alt: String)? {
+  public static func imageWidth(_ value: String?) -> Int? {
+    guard let value, let width = Int(value), width > 0, width < 10_000 else { return nil }
+    return width
+  }
+
+  public static func imageMarkdown(alt: String, id: String, width: Int?) -> String {
+    let size = width.map { " =\($0)" } ?? ""
+    return "![\(alt)](noterepo:image:\(id.lowercased())\(size))"
+  }
+
+  public static func imageItem(_ body: String) -> (id: String, alt: String, width: Int?)? {
     let value = body.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let groups = imageItem.groups(in: value), let id = groups[2] else { return nil }
-    return (id.lowercased(), groups[1] ?? "")
+    return (id.lowercased(), groups[1] ?? "", imageWidth(groups[3]))
   }
 
   public static func domain(_ url: String) -> String {

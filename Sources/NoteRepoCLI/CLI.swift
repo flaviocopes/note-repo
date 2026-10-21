@@ -191,7 +191,7 @@ public enum CLI {
 
   static func plainText(_ text: String) -> String {
     text.replacingOccurrences(
-      of: #"!\[[^\]]*\]\(noterepo:image:[a-f0-9]{64}\)"#, with: "[Image]", options: [.regularExpression, .caseInsensitive]
+      of: Links.imagePattern, with: "[Image]", options: [.regularExpression, .caseInsensitive]
     ).replacingOccurrences(
       of: #"\[([^\]]+)\]\((https?://[^\s)]+)\)"#, with: "$1", options: [.regularExpression, .caseInsensitive])
   }
@@ -211,9 +211,9 @@ public enum CLI {
     case .link(let links):
       kind = "link"
       extra = .object(["links": .array(links.map { .object(["title": .text($0.title), "url": .string($0.url)]) })])
-    case .image(let id, let alt):
+    case .image(let id, let alt, let width):
       kind = "image"
-      extra = .object(["image": .object(["id": .string(id), "alt": .string(alt)])])
+      extra = .object(["image": .object(["id": .string(id), "alt": .string(alt), "width": width.map(JSON.int)])])
     }
     return JSON.object([
       "n": .int(item.n), "level": .int(item.level), "list": .string(item.ordered ? "numbered" : "bullet"),

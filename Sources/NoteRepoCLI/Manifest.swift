@@ -55,7 +55,7 @@ enum Manifest {
         command: "noterepo move 2 --before 1"
       ),
       Capability(
-        description: "Add a PNG, JPEG, GIF, WebP or SVG image to a day",
+        description: "Add a PNG, JPEG, GIF, WebP or SVG image to a day. A resized image includes width",
         command: "noterepo image ~/Desktop/receipt.png --date yesterday"
       ),
       Capability(

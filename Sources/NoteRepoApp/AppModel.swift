@@ -55,7 +55,7 @@ final class AppModel {
     let notes = (try? store.search(query)) ?? []
     results = notes.map { note in
       let excerpt = note.content
-        .replacingOccurrences(of: #"!\[[^\]]*\]\(noterepo:image:[a-f0-9]{64}\)"#, with: "[Image]", options: [.regularExpression, .caseInsensitive])
+        .replacingOccurrences(of: Links.imagePattern, with: "[Image]", options: [.regularExpression, .caseInsensitive])
         .replacingOccurrences(of: "<br>", with: " ")
         .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
