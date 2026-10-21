@@ -376,8 +376,8 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
 
   override func cursorUpdate(with event: NSEvent) {
     let point = convert(event.locationInWindow, from: nil)
-    if refreshImageHover(at: point) {
-      NSCursor.resizeLeftRight.set()
+    if let cursor = refreshImageHover(at: point) {
+      cursor.set()
       return
     }
     if markerIndex(at: point) != nil {
@@ -389,12 +389,12 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
 
   override func mouseMoved(with event: NSEvent) {
     let point = convert(event.locationInWindow, from: nil)
-    if refreshImageHover(at: point) {
+    if let cursor = refreshImageHover(at: point) {
       if hoveredMarker != nil {
         hoveredMarker = nil
         needsDisplay = true
       }
-      NSCursor.resizeLeftRight.set()
+      cursor.set()
       return
     }
     let index = markerIndex(at: point)
@@ -429,9 +429,9 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     super.mouseDown(with: event)
   }
 
-  /// A press near the corner starts the resize. AppKit does not always hand that click to the cell.
+  /// A press on the right edge, the bottom edge, or the corner starts the resize.
   private func trackSelectedImage(with event: NSEvent, at point: NSPoint) -> Bool {
-    guard let character = imageHandle(at: point), let storage = textStorage, character < storage.length,
+    guard let character = imageResize(at: point)?.character, let storage = textStorage, character < storage.length,
       let image = storage.attribute(.attachment, at: character, effectiveRange: nil) as? ImageAttachment,
       let cell = image.attachmentCell as? ImageCell,
       let rect = ImageCell.drawnFrame(in: self, character: character)
@@ -439,31 +439,31 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     return cell.trackMouse(with: event, in: rect, of: self, atCharacterIndex: character, untilMouseUp: true)
   }
 
-  private func refreshImageHover(at point: NSPoint) -> Bool {
-    let handle = imageHandle(at: point)
-    guard handle != hoveredImage else { return handle != nil }
+  private func refreshImageHover(at point: NSPoint) -> NSCursor? {
+    let handle = imageResize(at: point)
+    guard handle?.character != hoveredImage else { return handle?.cursor }
     let previous = hoveredImage
-    hoveredImage = handle
+    hoveredImage = handle?.character
     if let layoutManager {
       if let previous, previous < (textStorage?.length ?? 0) {
         layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: previous, length: 1))
       }
-      if let handle {
-        layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: handle, length: 1))
+      if let character = handle?.character {
+        layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: character, length: 1))
       }
     }
     needsDisplay = true
-    return handle != nil
+    return handle?.cursor
   }
 
-  private func imageHandle(at point: NSPoint) -> Int? {
+  private func imageResize(at point: NSPoint) -> (character: Int, cursor: NSCursor)? {
     guard isEditable, let storage = textStorage, storage.length > 0 else { return nil }
-    var found: Int?
+    var found: (character: Int, cursor: NSCursor)?
     storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
       guard value is ImageAttachment, let frame = ImageCell.drawnFrame(in: self, character: range.location),
-        ImageCell.handleHitRect(in: frame).contains(point)
+        let axis = ImageCell.resizeAxis(in: frame, at: point)
       else { return }
-      found = range.location
+      found = (range.location, axis.cursor)
       stop.pointee = true
     }
     return found
@@ -495,15 +495,21 @@ final class NoteTextView: NSTextView, NSTextViewDelegate {
     guard isEditable, let storage = textStorage, storage.length > 0 else { return }
     storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
       guard value is ImageAttachment, let rect = ImageCell.drawnFrame(in: self, character: range.location) else { return }
+      self.addCursorRect(ImageCell.bottomCursorRect(in: rect), cursor: .resizeUpDown)
+      self.addCursorRect(ImageCell.rightCursorRect(in: rect), cursor: .resizeLeftRight)
       self.addCursorRect(ImageCell.handleHitRect(in: rect), cursor: .resizeLeftRight)
     }
   }
 
   func relayoutImage(at character: Int) {
     guard let storage = textStorage, let layoutManager, character < storage.length else { return }
+    // The layout manager still has the previous size here. Mark it, or a shrink leaves the old
+    // selection highlight sitting beside the image.
+    let previous = ImageCell.drawnFrame(in: self, character: character)
     let range = NSRange(location: character, length: 1)
     layoutManager.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
     layoutManager.invalidateDisplay(forCharacterRange: range)
+    if let previous { setNeedsDisplay(previous.insetBy(dx: -8, dy: -8)) }
     needsDisplay = true
     owner?.textLayoutChanged()
     window?.invalidateCursorRects(for: self)

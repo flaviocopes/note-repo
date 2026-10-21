@@ -263,6 +263,20 @@ enum SelfTest {
     check("a pasted image becomes an item", view.markdown.contains("- ![Pasted image](noterepo:image:"), view.markdown)
     check("the image is stored", view.paragraphs.contains { ($0.attachment as? ImageAttachment)?.entry.image != nil })
 
+    let imageFrame = NSRect(x: 100, y: 200, width: 400, height: 240)
+    check(
+      "the right edge resizes sideways",
+      ImageCell.resizeAxis(in: imageFrame, at: NSPoint(x: 492, y: 320)) == .horizontal)
+    check(
+      "the bottom edge resizes vertically",
+      ImageCell.resizeAxis(in: imageFrame, at: NSPoint(x: 300, y: 432)) == .vertical)
+    check(
+      "the corner resizes either way",
+      ImageCell.resizeAxis(in: imageFrame, at: NSPoint(x: 490, y: 430)) == .either)
+    check(
+      "the middle of an image does not resize",
+      ImageCell.resizeAxis(in: imageFrame, at: NSPoint(x: 300, y: 320)) == nil)
+
     if let index = view.paragraphs.firstIndex(where: { $0.attachment is ImageAttachment }) {
       await wait(0.2)
       view.resizeImage(at: index, to: 120)

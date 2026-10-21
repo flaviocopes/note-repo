@@ -93,6 +93,27 @@ final class ImageAttachment: NoteAttachment {
   }
 }
 
+enum ImageResizeAxis {
+  case horizontal
+  case vertical
+  case either
+
+  var cursor: NSCursor {
+    switch self {
+    case .horizontal, .either: return .resizeLeftRight
+    case .vertical: return .resizeUpDown
+    }
+  }
+
+  func delta(_ dx: CGFloat, _ dy: CGFloat) -> CGFloat {
+    switch self {
+    case .horizontal: return dx
+    case .vertical: return dy
+    case .either: return abs(dx) >= abs(dy) ? dx : dy
+    }
+  }
+}
+
 final class ImageCell: NSTextAttachmentCell {
   weak var owner: ImageAttachment?
 
@@ -116,7 +137,7 @@ final class ImageCell: NSTextAttachmentCell {
   override func cellBaselineOffset() -> NSPoint { .zero }
   override func wantsToTrackMouse() -> Bool { true }
 
-  /// The circle drawn at the corner. The grab area is larger, so a click near it still resizes.
+  /// The circle drawn at the corner.
   static func handleRect(in frame: NSRect) -> NSRect {
     let side = min(22, frame.width, frame.height)
     return NSRect(x: frame.maxX - side, y: frame.maxY - side, width: side, height: side)
@@ -126,6 +147,34 @@ final class ImageCell: NSTextAttachmentCell {
     let knob = handleRect(in: frame)
     let side: CGFloat = 44
     return NSRect(x: knob.midX - side / 2, y: knob.midY - side / 2, width: side, height: side)
+  }
+
+  /// How close the pointer has to be to the right or bottom line. A few points sit outside the image.
+  static let edgeGrab: CGFloat = 16
+  static let edgeSlack: CGFloat = 10
+
+  /// `horizontal` is the right line, `vertical` is the bottom line, `either` is the corner.
+  static func resizeAxis(in frame: NSRect, at point: NSPoint) -> ImageResizeAxis? {
+    let onRight = point.x >= frame.maxX - edgeGrab && point.x <= frame.maxX + edgeSlack
+      && point.y >= frame.minY - edgeSlack && point.y <= frame.maxY + edgeSlack
+    let onBottom = point.y >= frame.maxY - edgeGrab && point.y <= frame.maxY + edgeSlack
+      && point.x >= frame.minX - edgeSlack && point.x <= frame.maxX + edgeSlack
+    if handleHitRect(in: frame).contains(point) || (onRight && onBottom) { return .either }
+    if onRight { return .horizontal }
+    if onBottom { return .vertical }
+    return nil
+  }
+
+  static func rightCursorRect(in frame: NSRect) -> NSRect {
+    NSRect(
+      x: frame.maxX - edgeGrab, y: frame.minY - edgeSlack, width: edgeGrab + edgeSlack,
+      height: frame.height + edgeSlack * 2)
+  }
+
+  static func bottomCursorRect(in frame: NSRect) -> NSRect {
+    NSRect(
+      x: frame.minX - edgeSlack, y: frame.maxY - edgeGrab, width: frame.width + edgeSlack * 2,
+      height: edgeGrab + edgeSlack)
   }
 
   /// The rectangle the image is drawn in, in the text view's coordinates. The frame AppKit passes to
@@ -151,8 +200,8 @@ final class ImageCell: NSTextAttachmentCell {
     let point = textView.convert(theEvent.locationInWindow, from: nil)
     textView.setSelectedRange(NSRange(location: charIndex, length: 1))
     let drawn = Self.drawnFrame(in: textView, character: charIndex) ?? cellFrame
-    if textView.isEditable && Self.handleHitRect(in: drawn).contains(point) {
-      resize(from: theEvent, index: charIndex, textView: textView, owner: owner)
+    if textView.isEditable, let axis = Self.resizeAxis(in: drawn, at: point) {
+      resize(from: theEvent, index: charIndex, textView: textView, owner: owner, axis: axis)
       return true
     }
     guard let window = textView.window else { return true }
@@ -167,21 +216,22 @@ final class ImageCell: NSTextAttachmentCell {
     return true
   }
 
-  private func resize(from startEvent: NSEvent, index: Int, textView: NoteTextView, owner: ImageAttachment) {
+  private func resize(
+    from startEvent: NSEvent, index: Int, textView: NoteTextView, owner: ImageAttachment, axis: ImageResizeAxis
+  ) {
     guard let window = textView.window, let container = textView.textContainer else { return }
     let start = textView.convert(startEvent.locationInWindow, from: nil)
     let startWidth = owner.displaySize.width
     var dragged = false
-    NSCursor.resizeLeftRight.push()
+    axis.cursor.push()
     defer { NSCursor.pop() }
     while let event = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
       if event.type == .leftMouseUp { break }
       let point = textView.convert(event.locationInWindow, from: nil)
-      let dx = point.x - start.x
-      let dy = point.y - start.y
-      guard hypot(dx, dy) > 1 || dragged else { continue }
+      let delta = axis.delta(point.x - start.x, point.y - start.y)
+      guard abs(delta) > 1 || dragged else { continue }
       dragged = true
-      owner.displayWidth = startWidth + (abs(dx) >= abs(dy) ? dx : dy)
+      owner.displayWidth = startWidth + delta
       owner.displaySize = owner.fittedSize(available: NoteAttachment.availableWidth(container, index))
       textView.relayoutImage(at: index)
     }
